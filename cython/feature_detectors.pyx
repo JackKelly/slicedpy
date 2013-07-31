@@ -1,5 +1,6 @@
 """
 RESOURCES:
+http://wesmckinney.com/blog/?p=278
 http://docs.cython.org/src/userguide/numpy_tutorial.html
 """
 
