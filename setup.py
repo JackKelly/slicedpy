@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 
+# TODO: compile Cython code!
+
 setup(
     name='slicedpy',
     version='0.1',
