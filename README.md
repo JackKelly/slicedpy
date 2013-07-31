@@ -1,10 +1,15 @@
 # SlicedPy
 
-SlicedPy (pronounced "Sliced Pie") takes your whole-house meter
+SlicedPy (pronounced "Sliced Pie") takes your whole-house power meter
 readings and estimates the energy consumed by your individual
-appliances.  This process is sometimes called "nonintrusive load
-monitoring (NILM)", "nonintrusive appliance load monitoring (NIALM)"
-or "smart meter disaggregation".
+appliances.  In other words, it produces an (estimated) itemised
+energy bill using just a single, whole-house power meter.
+
+This process is sometimes called:
+
+* "nonintrusive load monitoring (NILM)"
+* "nonintrusive appliance load monitoring (NIALM)"
+* "smart meter disaggregation"
 
 # Requirements
 
