@@ -25,3 +25,4 @@ your whole-home energy consumption) and slicing it into its component
 pieces (each representing the energy consumed by an individual
 appliance); hence the name "SlicedPy".  It's spelt "py" not "pie"
 because the code is mostly written in Python.
+
