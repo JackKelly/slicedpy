@@ -23,9 +23,8 @@ http://docs.cython.org/src/userguide/numpy_tutorial.html
 from __future__ import print_function, division
 import numpy as np
 cimport numpy as np
-cimport cython
 import pandas as pd
-# from slicedpy.feature import Feature
+from slicedpy.feature import Feature
 
 # Data types for timestamps (TS = TimeStamp)
 TS_DTYPE = np.uint64
@@ -35,10 +34,9 @@ ctypedef np.uint64_t TS_DTYPE_t
 PW_DTYPE = np.float32
 ctypedef np.float32_t PW_DTYPE_t
 
-# @cython.boundscheck(False)  # turn off bounds-checking for entire function
 def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
-                 Py_ssize_t min_n_samples=3, 
-                 PW_DTYPE_t max_range=15):
+                  Py_ssize_t min_n_samples=3, 
+                  PW_DTYPE_t max_range=15):
     """Steady_state detector based on the definition of steady states given
     in Hart 1992, page 1882, under the heading 'C. Edge Detection'.
 
@@ -81,15 +79,15 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
 
         if (ss_max - ss_min) > max_range: # Just left a candidate steady state.
             if (i - ss_start_i) >= min_n_samples:
-                # TODO: use Features
-                # ss = Feature(start=ss_start_i, end=i, mean=ss.mean())
-                ss.append((ss_start_i, i, watts[ss_start_i:i].mean()))
+                feature = Feature(start=ss_start_i, end=i, 
+                                  mean=watts[ss_start_i:i].mean())
+                ss.append(feature)
             ss_start_i = i
             ss_min = ss_max = watts[ss_start_i]
 
     if (i - ss_start_i) >= min_n_samples:
-        # TODO: use Features
-        # ss = Feature(start=ss_start_i, end=i, mean=ss.mean())
-        ss.append((ss_start_i, i, watts[ss_start_i:i].mean()))
+        feature = Feature(start=ss_start_i, end=i, 
+                          mean=watts[ss_start_i:i].mean())
+        ss.append(feature)
             
     return ss

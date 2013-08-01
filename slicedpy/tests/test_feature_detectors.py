@@ -17,7 +17,7 @@
 """
 
 from __future__ import print_function, division
-import unittest
+import unittest, time
 import slicedpy.feature_detectors as fd
 import numpy as np
 
@@ -27,10 +27,12 @@ class TestFeatureDetectors(unittest.TestCase):
                        dtype=np.float32)
         
         steady_states = fd.steady_states(arr)
-        self.assertEqual(steady_states[0], (0, 6,3.5))
-        self.assertEqual(steady_states[1][0], 6)
-        self.assertEqual(steady_states[1][1], 12)
-        self.assertAlmostEqual(steady_states[1][2], 104.166, places=2)
+        self.assertEqual(steady_states[0].start, 0)
+        self.assertEqual(steady_states[0].end, 6)
+        self.assertEqual(steady_states[0].mean, 3.5)
+        self.assertEqual(steady_states[1].start, 6)
+        self.assertEqual(steady_states[1].end, 12)
+        self.assertAlmostEqual(steady_states[1].mean, 104.166, places=2)
 
         #########################
         # Now try to break it...
@@ -52,7 +54,14 @@ class TestFeatureDetectors(unittest.TestCase):
 
         ##########################################
         # Now do a quick bit of basic profiling...
-
+        large_arr = np.linspace(1., 100., 1E6).astype(dtype=np.float32)
+        print("Finished creating large array with", large_arr.size, "entries.")
+        t0 = time.time()
+        steady_states = fd.steady_states(large_arr)
+        t1 = time.time()
+        print("Runtime for steady_states() was", t1-t0, "seconds")
+        # Can do a million-entry array in 0.005 seconds on my i5 laptop
+        
 
 if __name__ == '__main__':
     unittest.main()
