@@ -91,3 +91,33 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
         ss.append(feature)
             
     return ss
+
+
+def enhanced_steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
+                           Py_ssize_t min_n_samples=3, 
+                           PW_DTYPE_t max_range=15):
+    """Enhanced steady_state detector.
+
+    Args:
+        watts (np.ndarray): Watts. Row vector. np.float_32
+        min_n_samples (int): Optional. Defaults to 3. Minimum number of 
+            consecutive samples per steady state.  Hart used 3.
+        max_range (float): Optional. Defaults to 15 Watts. Maximum 
+            permissible range between the lowest and highest value per
+            steady state. Hart used 15.
+    
+    Returns:
+        List of Features.  Each Feature has the following attributes:
+            - 'watts': mean watts for that steady state.
+    """
+
+    # Sanity checking
+    if watts is None or min_n_samples is None or max_range is None:
+        raise ValueError('Do not use None for any arguments.')
+    if watts.size < min_n_samples:
+        raise ValueError('watts array must have more than '
+                         'min_n_samples={} elements!'.format(min_n_samples))
+
+    smoothed = pd.rolling_mean(watts, 20)
+    ss_from_smoothed = steady_states(smoothed, min_n_samples, max_range)
+    return ss_from_smoothed
