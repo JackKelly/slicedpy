@@ -17,3 +17,11 @@ This process is sometimes called:
 * [Pandas](http://pandas.pydata.org/)
 * [Power Data Analysis (PDA)
    toolkit](https://github.com/JackKelly/pda/)
+
+# Why the name "SlicedPy"?
+
+Smart meter disaggregation is a little like taking a pie (representing
+your whole-home energy consumption) and slicing it into its component
+pieces (each representing the energy consumption of an individual
+appliance); hence the name "SlicedPy".  It's spelt "py" not "pie"
+because the code is mostly written in Python.
