@@ -1,11 +1,33 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+from os.path import join
 
-# TODO: compile Cython code!
+CYTHON_DIR = 'cython'
+
+try:
+    # This trick adapted from 
+    # http://stackoverflow.com/a/4515279/732596
+    from Cython.Build import cythonize
+except ImportError:
+    use_cython = False
+else:
+    use_cython = True
+
+if use_cython:
+    sources = [join(CYTHON_DIR, 'feature_detectors.pyx')]
+    extensions = [Extension("slicedpy.feature_detectors", sources=sources)]
+    ext_modules = cythonize(extensions)
+else:
+    ext_modules = [
+        Extension("slicedpy.feature_detectors", 
+                  [join(CYTHON_DIR, 'feature_detectors.c')]),
+    ]
+
 
 setup(
     name='slicedpy',
     version='0.1',
     packages = find_packages(),
+    ext_modules = ext_modules,
     install_requires = ['numpy', 'pandas', 'pda'],
     description='Estimate the energy consumed by individual appliances from whole-house power meter readings',
     author='Jack Kelly',
