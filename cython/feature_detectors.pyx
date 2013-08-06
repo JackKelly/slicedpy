@@ -34,6 +34,17 @@ ctypedef np.uint64_t TS_DTYPE_t
 PW_DTYPE = np.float32
 ctypedef np.float32_t PW_DTYPE_t
 
+def _sanity_check_input_to_steady_state_detectors(
+                  np.ndarray[PW_DTYPE_t, ndim=1] watts,
+                  Py_ssize_t min_n_samples, 
+                  PW_DTYPE_t max_range):
+    if watts is None or min_n_samples is None or max_range is None:
+        raise ValueError('Do not use None for any arguments.')
+    if watts.size < min_n_samples:
+        raise ValueError('watts array must have more than '
+                         'min_n_samples={} elements!'.format(min_n_samples))
+
+
 def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
                   Py_ssize_t min_n_samples=3, 
                   PW_DTYPE_t max_range=15):
@@ -53,12 +64,7 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
             mean watts for that steady state.
     """
 
-    # Sanity checking
-    if watts is None or min_n_samples is None or max_range is None:
-        raise ValueError('Do not use None for any arguments.')
-    if watts.size < min_n_samples:
-        raise ValueError('watts array must have more than '
-                         'min_n_samples={} elements!'.format(min_n_samples))
+    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
 
     cdef:
         Py_ssize_t i, n, ss_start_i # steady_state_start_index
@@ -111,12 +117,9 @@ def enhanced_steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
             - 'watts': mean watts for that steady state.
     """
 
-    # Sanity checking
-    if watts is None or min_n_samples is None or max_range is None:
-        raise ValueError('Do not use None for any arguments.')
-    if watts.size < min_n_samples:
-        raise ValueError('watts array must have more than '
-                         'min_n_samples={} elements!'.format(min_n_samples))
+    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
+
+    # Break watts into 
 
     smoothed = pd.rolling_mean(watts, 20)
     ss_from_smoothed = steady_states(smoothed, min_n_samples, max_range)

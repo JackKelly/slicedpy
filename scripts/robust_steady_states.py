@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from scipy import signal
+import slicedpy.feature_detectors as fd
 
 DATA_DIR = DD
 c = Channel(DATA_DIR, 'aggregate')
@@ -15,64 +16,56 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.plot(c.series, color='k', label='data')
 
-WINDOW_SIZE = 20
+WINDOW_SIZE = 10
 
+########################
 # calculate rolling mean
 # ax.plot(pd.rolling_mean(c.series, WINDOW_SIZE, center=True), label='mean')
 # ax.plot(pd.rolling_median(c.series, WINDOW_SIZE, center=True), label='median')
 # ax.plot(pd.rolling_std(c.series, WINDOW_SIZE, center=True), label='std')
 
-# mean absolute deviation
-
-# mad = pd.rolling_apply(c.series, WINDOW_SIZE, mad_func, center=True)
-# ax.plot(mad, color='g')
-
+##################
 # Calculate low-pass
 # b, a = signal.butter(8, 0.15)
 # y = signal.filtfilt(b, a, c.series.values)
 # ax.plot(y, label='lowpass')
 
-# My algorithm:
-# 1. Take the first WINDOW_SIZE chunk. Calculate the mean and MAD.
-# 2. If the MAD is above threshold then move onto the next chunk else:
-# 3. Look at the next WINDOW_SIZE chunk and calculate the MAD for that chunk, 
-#    using the mean from the previous chunk.  If the MAD is above threshold then
-#    end previous steady state and start new one.  Else add new chunk to stead state.
+#####################
+# My steady state code
+
+RDT = 0.05 # relative deviation threshold
 
 def mean_relative_deviation(x, mean):
+    """Convert to absolute value only after calculating the mean.
+    The idea is that rapid oscillations should cancel themselves out."""
     return np.fabs((x - mean).mean() / mean)
-
-def mean_absolute_relative_deviation(x, mean):
-    return np.fabs(x - mean).mean() / mean
 
 n_chunks = int(c.series.size / WINDOW_SIZE)
 print("n_chunks =", n_chunks)
 ss_start_i = 0
-RDT = 0.1 # relative deviation threshold
 steady_states = []
-is_first_chunk_of_ss = True
 for chunk_i in range(n_chunks-2):
     ss_end_i = (chunk_i+1)*WINDOW_SIZE
     ss = c.series.values[ss_start_i:ss_end_i]
-
-    if is_first_chunk_of_ss:
-        if mean_absolute_relative_deviation(ss, ss.mean()) > RDT:
-            ss_start_i = ss_end_i
-            continue
-        else:
-            is_first_chunk_of_ss = False
-
     next_chunk = c.series.values[ss_end_i:(chunk_i+2)*WINDOW_SIZE]
     if mean_relative_deviation(next_chunk, ss.mean()) > RDT:
         # new chunk marks the end of the steady state
-        steady_states.append((ss_start_i, ss_end_i, ss.mean()))
+        if (ss_end_i - ss_start_i) / WINDOW_SIZE > 1:
+            steady_states.append((ss_start_i, ss_end_i, ss.mean()))
         ss_start_i = ss_end_i
-        is_first_chunk_of_ss = True
 
 print(len(steady_states))
 
 for ss_start_i, ss_end_i, ss_mean in steady_states:
-    ax.plot([ss_start_i, ss_end_i], [ss_mean, ss_mean], color='r') 
+    line, = ax.plot([ss_start_i, ss_end_i], [ss_mean, ss_mean], color='r', linewidth=5, alpha=0.5) 
+line.set_label('my steady states')
+
+#######################
+# Hart's steady states
+steady_states = fd.steady_states(c.series.values)
+for ss in steady_states:
+    line, = ax.plot([ss.start, ss.end], [ss.mean, ss.mean], color='g', linewidth=5, alpha=0.5) 
+line.set_label('Hart\'s steady states')
 
 plt.legend()
 plt.show()
