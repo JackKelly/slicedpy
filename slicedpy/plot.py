@@ -56,3 +56,35 @@ def plot_clustered_spike_histogram_row(ax, db, X, num_start_time,
                   .format(db.eps, db.min_samples, row_label))
     ax.set_ylabel('count')
     ax.set_xlabel('date time')
+
+
+def plot_multiple_linear_regressions(ax, mlr, x, window_size=10, ax2=None):
+    """
+    Args:
+        mlr: output from the multiple_linear_regressions() function
+        window_size (int): Width of each windows in number of samples.  
+            Must be multiple of 2.  Windows are overlapping:
+              2222
+            11113333
+
+    """
+
+    half_window_size = window_size / 2
+    n_windows = mlr.shape[0]
+    start_i = 0
+    end_i = window_size
+    for i in range(n_windows):
+        (slope, intercept, r_squared, std_err) = mlr[i]
+        X = [x[start_i], x[end_i]]
+        ax.plot(X, [intercept, intercept+(slope*window_size)], color='r')
+        if ax2:
+            ax2.plot(X, [std_err, std_err], color='k')
+        start_i += half_window_size
+        end_i += half_window_size
+        
+
+    ax.set_title('Multiple linear regressions')
+    ax.set_ylabel('watts')
+
+    if ax2:
+        ax2.set_title('std_err')

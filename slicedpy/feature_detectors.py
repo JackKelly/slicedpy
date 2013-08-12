@@ -1,6 +1,8 @@
+from __future__ import print_function, division
 from _cython_feature_detectors import *
 import numpy as np
 import copy
+from scipy import stats
 
 """
 This file implements feature detectors which are written in pure
@@ -8,6 +10,10 @@ Python.  Cython feature detectors are in
 cython/_cython_feature_detectors.pyx.  This file also holds helper functions
 for pre-processing prior to using feature detectors.
 """
+
+###############################################################################
+# SPIKE HISTOGRAM FUNCTIONS
+###############################################################################
 
 def merge_spikes(fdiff):
     """
@@ -75,3 +81,37 @@ def spike_histogram_row_to_data_coordinates(row):
     X[:,0] = nonzero_i
     X[:,1] = row[nonzero_i]
     return X
+
+
+###############################################################################
+# 
+###############################################################################
+
+def multiple_linear_regressions(data, window_size=10):
+    """
+    Args:
+        data (np.ndarray): power.
+        window_size (int): Width of each windows in number of samples.  
+            Must be multiple of 2.  Windows are overlapping:
+              2222
+            11113333
+    Return:
+        np.ndarray(n_windows, 4): the 4 columns are: 
+            slope, intercept, r_value**2, std_err
+    """
+    assert((window_size % 2) == 0)
+
+    half_window_size = window_size / 2
+    n_windows = int(data.size / half_window_size) - 1
+    x = np.arange(window_size)
+    results = np.empty((n_windows, 4))
+    start_i = 0
+    end_i = window_size
+    for i in range(n_windows):
+        window = data[start_i:end_i]
+        start_i += half_window_size
+        end_i += half_window_size
+        slope, intercept, r_value, p_value, std_err = stats.linregress(x, window)
+        results[i] = (slope, intercept, r_value**2, std_err)
+
+    return results

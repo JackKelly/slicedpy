@@ -79,6 +79,13 @@ class TestFeatureDetectors(unittest.TestCase):
         merged_correct = np.array([0, 2, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, -10])
         np.testing.assert_array_equal(merged, merged_correct)
 
+    def test_multiple_linear_regressions(self):
+        arr = np.array([1,1,1,1,4,4,4,4])
+        mlr = fd.multiple_linear_regressions(arr, 4)
+        correct = np.array([[ 0.  , 1.  , 0.  , 0.        ],
+                            [ 1.2 , 0.7 , 0.8 , 0.42426407],
+                            [ 0.  , 4.  , 0.  , 0.        ]])
+        np.testing.assert_array_almost_equal(mlr, correct)
 
 if __name__ == '__main__':
     unittest.main()
