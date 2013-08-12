@@ -66,8 +66,19 @@ class TestFeatureDetectors(unittest.TestCase):
         fdiff = np.array([1, -1, 0, 1, 1, 1, 2, 3, 0, 0, -1, -5, -3, 0])
         merged = fd.merge_spikes(fdiff)
         merged_correct = np.array([1, -1, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, -9, 0])
-        self.assertEqual(merged, merged_correct)
+        np.testing.assert_array_equal(merged, merged_correct)
+
+        fdiff = np.array([1, -1, 0, 1, 1, 1, 2, 3, 0, 0, -1, -5, -3, -1])
+        merged = fd.merge_spikes(fdiff)
+        merged_correct = np.array([1, -1, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, -10])
+        np.testing.assert_array_equal(merged, merged_correct)
         
+
+        fdiff = np.array([1, 1, 0, 1, 1, 1, 2, 3, 0, 0, -1, -5, -3, -1])
+        merged = fd.merge_spikes(fdiff)
+        merged_correct = np.array([0, 2, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, -10])
+        np.testing.assert_array_equal(merged, merged_correct)
+
 
 if __name__ == '__main__':
     unittest.main()
