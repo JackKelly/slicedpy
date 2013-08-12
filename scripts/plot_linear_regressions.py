@@ -16,6 +16,7 @@ WINDOW_SIZE = 20
 N_SUBPLOTS = 2
 START_DATE = '2013/6/4'
 END_DATE = '2013/6/4 18:00'
+LOAD_CC = False # load current cost data?
 
 # SETUP FIGURE
 fig = plt.figure()
@@ -28,20 +29,22 @@ ax2 = fig.add_subplot(N_SUBPLOTS,1,2, sharex=ax1)
 
 # LOAD AGGREGATE DATA
 c = Channel()
-print('Loading Current Cost aggregate...')
-cc = Channel(DD, 'aggregate') # cc = Current cost
+if LOAD_CC:
+    print('Loading Current Cost aggregate...')
+    cc = Channel(DD, 'aggregate') # cc = Current cost
+    cc = cc.crop(START_DATE, END_DATE)
+
 print('Loading high freq mains...')
 c.load_normalised(DATA_DIR, high_freq_basename='mains.dat', 
                   high_freq_param='active')
-print('Cropping power...')
 c = c.crop(START_DATE, END_DATE)
-cc = cc.crop(START_DATE, END_DATE)
 
 print('Plotting...')
 ax1.xaxis.axis_date(tz=pytz.timezone('Europe/London'))
 ax1.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%y %H:%M:%S'))
 ax1.plot(c.series.index, c.series, color='k', label=c.name)
-ax1.plot(cc.series.index, cc.series, color='r', label=cc.name)
+if LOAD_CC:
+    ax1.plot(cc.series.index, cc.series, color='r', label=cc.name)
 ax1.set_ylabel('watts')
 ax1.set_title('Aggregate. 1s active power, normalised.')
 ax1.legend()

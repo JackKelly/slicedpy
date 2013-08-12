@@ -99,9 +99,9 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
     return ss
 
 
-def steady_states_mean(
+def mean_steady_states(
                   np.ndarray[PW_DTYPE_t, ndim=1] watts,
-                  Py_ssize_t min_n_samples=3, 
+                  Py_ssize_t min_n_samples=3,
                   PW_DTYPE_t max_range=10):
     """Steady_state detector where we calculate the mean of each steady state;
     if the next sample is more than max_range away from the mean then this is
@@ -109,14 +109,11 @@ def steady_states_mean(
 
     Args:
         watts (np.ndarray): Watts. Row vector. np.float_32
-        min_n_samples (int): Optional. Defaults to 3. Minimum number of 
-            consecutive samples per steady state.  Hart used 3.
-        max_range (float): Optional. Defaults to 15 Watts. Maximum 
-            permissible range between the lowest and highest value per
-            steady state. Hart used 15.
-    
+        min_n_samples (int): Optional. Defaults to 3. Minimum number of
+            consecutive samples per steady state. Hart used 3.
+        max_range (float): Optional. 
     Returns:
-        List of Features.  Each Feature has a 'watts' attribute which gives the
+        List of Features. Each Feature has a 'watts' attribute which gives the
             mean watts for that steady state.
     """
 
@@ -137,7 +134,7 @@ def steady_states_mean(
         ss_length = i - ss_start_i
         if delta > max_range: # Just left a candidate steady state.
             if ss_length >= min_n_samples:
-                feature = Feature(start=ss_start_i, end=i, 
+                feature = Feature(start=ss_start_i, end=i,
                                   mean=ss_mean)
                 ss.append(feature)
             ss_start_i = i
@@ -145,6 +142,65 @@ def steady_states_mean(
         else:
             accumulator += p
             ss_mean = accumulator / (ss_length + 1)
+
+    if (i - ss_start_i) >= min_n_samples:
+        feature = Feature(start=ss_start_i, end=i,
+                          mean=watts[ss_start_i:i].mean())
+        ss.append(feature)
+            
+    return ss
+
+
+def sliding_mean_steady_states(
+                  np.ndarray[PW_DTYPE_t, ndim=1] watts,
+                  Py_ssize_t min_n_samples=3, 
+                  PW_DTYPE_t max_range=10,
+                  Py_ssize_t window_size=10):
+    """Steady_state detector where we calculate the mean *at most* the last
+    window_size samples of each steady state;  if the next sample is more than
+    max_range away from the mean then this is the end of the steady state.
+
+    Args:
+        watts (np.ndarray): Watts. Row vector. np.float_32
+        min_n_samples (int): Optional. Defaults to 3. Minimum number of 
+            consecutive samples per steady state.  Hart used 3.
+        max_range (float): Optional.
+        window_size (int): number of samples
+    
+    Returns:
+        List of Features.  Each Feature has a 'watts' attribute which gives the
+            mean watts for that steady state.
+    """
+
+    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
+
+    cdef:
+        Py_ssize_t i, n, ss_start_i, ss_length # steady_state_start_index
+        PW_DTYPE_t p, ss_mean, accumulator, delta # steady state max and mins
+
+    n = len(watts)
+    ss = [] # list of steady states. What we return
+    ss_start_i = 0
+    accumulator = ss_mean = watts[ss_start_i]
+
+    for i from 1 <= i < n-1:
+        p = watts[i]
+        delta = np.fabs(ss_mean - p)
+        ss_length = i - ss_start_i
+        if delta > max_range: # Just left a candidate steady state.
+            if ss_length >= min_n_samples:
+                feature = Feature(start=ss_start_i, end=i, 
+                                  mean=watts[ss_start_i:i].mean())
+                ss.append(feature)
+            ss_start_i = i
+            accumulator = ss_mean = watts[ss_start_i]
+        else:
+            accumulator += p
+            if ss_length >= window_size:
+                accumulator -= watts[i-window_size]
+                ss_mean = accumulator / window_size
+            else:
+                ss_mean = accumulator / (ss_length + 1)
 
     if (i - ss_start_i) >= min_n_samples:
         feature = Feature(start=ss_start_i, end=i, 
