@@ -3,6 +3,7 @@
 from __future__ import print_function, division
 from pda.channel import Channel, DD
 from pda.dataset import load_dataset, crop_dataset, plot_each_channel_activity
+from slicedpy.feature_detectors import merge_spikes
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
@@ -66,22 +67,7 @@ plot_each_channel_activity(ax2, ds)
 
 fdiff = np.diff(c.series.values)
 
-# Merge consecutive fdiff values of the same sign
-sign_comparison = (fdiff[:-1] * fdiff[1:]) > 0
-merged_fdiff = np.zeros(sign_comparison.size)
-accumulator = 0
-for i in range(1,sign_comparison.size-1):
-    if sign_comparison[i] == True:
-        if accumulator == 0:
-            accumulator = fdiff[i] + fdiff[i+1]
-        else:
-            accumulator += fdiff[i+1]
-    else:
-        if accumulator == 0:
-            merged_fdiff[i] = fdiff[i]
-        else:
-            merged_fdiff[i] = accumulator
-            accumulator = 0
+merged_fdiff = merge_spikes(fdiff)
 
 # ax2.plot(x[:-1], fdiff, color='k', label='fdiff')
 # ax2.plot(x[:-2], merged_fdiff, color='r', label='merged_fdiff')

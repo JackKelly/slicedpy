@@ -29,13 +29,13 @@ else:
     use_cython = True
 
 if use_cython:
-    sources = [join(CYTHON_DIR, 'feature_detectors.pyx')]
-    extensions = [Extension("slicedpy.feature_detectors", sources=sources)]
+    sources = [join(CYTHON_DIR, '_cython_feature_detectors.pyx')]
+    extensions = [Extension("slicedpy._cython_feature_detectors", sources=sources)]
     ext_modules = cythonize(extensions)
 else:
     ext_modules = [
-        Extension("slicedpy.feature_detectors", 
-                  [join(CYTHON_DIR, 'feature_detectors.c')]),
+        Extension("slicedpy._cython_feature_detectors", 
+                  [join(CYTHON_DIR, '_cython_feature_detectors.c')]),
     ]
 
 

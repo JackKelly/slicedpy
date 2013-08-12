@@ -61,6 +61,12 @@ class TestFeatureDetectors(unittest.TestCase):
         t1 = time.time()
         print("Runtime for steady_states() was", t1-t0, "seconds")
         # Can do a million-entry array in 0.005 seconds on my i5 laptop
+
+    def test_merge_spikes(self):
+        fdiff = np.array([1, -1, 0, 1, 1, 1, 2, 3, 0, 0, -1, -5, -3, 0])
+        merged = fd.merge_spikes(fdiff)
+        merged_correct = np.array([1, -1, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, -9, 0])
+        self.assertEqual(merged, merged_correct)
         
 
 if __name__ == '__main__':
