@@ -3,11 +3,13 @@
 from __future__ import print_function, division
 from pda.channel import Channel, DD
 from pda.dataset import load_dataset, crop_dataset, plot_each_channel_activity
-from slicedpy.feature_detectors import merge_spikes
+import slicedpy.feature_detectors as fd
+import slicedpy.plot as splt
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import pytz
+from sklearn.cluster import DBSCAN
 
 DATA_DIR = DD
 WINDOW_SIZE = 60
@@ -67,101 +69,46 @@ plot_each_channel_activity(ax2, ds)
 
 fdiff = np.diff(c.series.values)
 
-merged_fdiff = merge_spikes(fdiff)
+if MERGE_SPIKES:
+    fdiff = fd.merge_spikes(fdiff)
 
 # ax2.plot(x[:-1], fdiff, color='k', label='fdiff')
 # ax2.plot(x[:-2], merged_fdiff, color='r', label='merged_fdiff')
 # ax2.plot(x[:-2], sign_comparison*1000, color='g', label='sign_comparison')
 
-abs_fdiff = np.fabs(merged_fdiff if MERGE_SPIKES else fdiff)
-n_chunks = int(abs_fdiff.size / WINDOW_SIZE)
-start_i = 0
 N_BINS = 8
-bin_edges = np.concatenate(([0], np.exp(np.arange(1,N_BINS+1))))
-print("bin edges =", bin_edges)
-# bin_edges = [5, 10, 15, 20, 25, 50, 100, 250, 500, 750, 1000, 1500, 2000, 4000]
-# N_BINS = len(bin_edges)-1
-print("N_BINS=", N_BINS, "n_chunks=", n_chunks)
-spike_histogram = np.empty((N_BINS, n_chunks), dtype=np.int64)
-for chunk_i in range(n_chunks):
-    end_i = (chunk_i+1)*WINDOW_SIZE
-    chunk = abs_fdiff[start_i:end_i]
-    spike_histogram[:,chunk_i] = np.histogram(chunk, bins=bin_edges)[0]
-    start_i = end_i
-
-vmax = spike_histogram.max()
+spike_histogram, bin_edges = fd.spike_histogram(fdiff, window_size=WINDOW_SIZE, 
+                                                n_bins=N_BINS)
 
 # get ordinal representations of start and end date times
 num_start_time = mdates.date2num(c.series.index[0])
 num_end_time = mdates.date2num(c.series.index[-1])
+splt.plot_spike_histogram(ax3, spike_histogram, bin_edges, 
+                          num_start_time, num_end_time,
+                          title=('Merged spike histogram' if MERGE_SPIKES 
+                                 else 'Spike histogram'))
 
-ax3.imshow(spike_histogram, aspect='auto', vmin=0, vmax=vmax, 
-           interpolation='none', origin='lower',
-           extent=(num_start_time, num_end_time, 0, N_BINS))
-                                
-ax3.set_ylabel('Bin edges in watts')
-ax3.set_title(('Merged' if MERGE_SPIKES else 'Unmerged') + ' spike histogram')
-
-def bin_label(bin_i, pos=None):
-    bin_i = int(bin_i)
-    if bin_i >= len(bin_edges)-1:
-        bin_i = len(bin_edges)-2
-    return ('bin index={}, bin edges={:.0f}-{:.0f}W'
-            .format(bin_i, bin_edges[bin_i], bin_edges[bin_i+1]))
-
-ax3.set_yticks(np.arange(N_BINS+1))
-ax3.set_yticklabels(['{:.0f}'.format(w) for w in bin_edges])
 
 ##############################################################
 # CLUSTERING
 
-from sklearn.cluster import DBSCAN
-import pylab as pl
-
-BIN_I = 5
-
-bin = spike_histogram[BIN_I,:]
-# make a 2d matrix X where each row stores the 
-# coordinates of a single data point.
-nonzero_i = np.nonzero(bin)[0]
-X = np.zeros((nonzero_i.size, 2), dtype=np.float64)
-X[:,0] = nonzero_i
-X[:,1] = bin[nonzero_i]
+ROW_I = 5
+row = spike_histogram[ROW_I,:]
+X = fd.spike_histogram_row_to_data_coordinates(row)
 db = DBSCAN(eps=10, min_samples=6).fit(X)
 
-labels = db.labels_
-core_samples = db.core_sample_indices_
-unique_labels = set(labels)
-colors = pl.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
+##############
+# Plot clusters
 
 # calculate some constants to help convert from indicies to 
 # ordinal datetimes
+n_chunks = int(fdiff.size / WINDOW_SIZE)
 num_time_range = num_end_time - num_start_time
 num_per_item = num_time_range / n_chunks
-def i_to_num(i):
-    return num_start_time + (i*num_per_item)
+row_label = ('row index={}, bin edges={:.0f}-{:.0f}W'
+             .format(ROW_I, bin_edges[ROW_I], bin_edges[ROW_I+1]))
 
-for k, col in zip(unique_labels, colors):
-    if k == -1:
-        # black used for noise
-        col = 'k'
-        markersize = 6
-    class_members = [index[0] for index in np.argwhere(labels == k)]
-    for index in class_members:
-        x = X[index]
-        if index in core_samples and k != -1:
-            markersize = 14
-        else:
-            markersize = 6
-        ax4.plot(i_to_num(x[0]), x[1], 'o', markerfacecolor=col, 
-                 markeredgecolor='k', markersize=markersize)    
-
-ax4.set_title('clustering using DBSCAN from ' + 
-              ('merged' if MERGE_SPIKES else 'unmerged') +
-              ', eps={}, min_samples={}, '
-              '{}'
-              .format(db.eps, db.min_samples, bin_label(BIN_I)))
-ax4.set_ylabel('count')
-ax4.set_xlabel('date time')
+splt.plot_clustered_spike_histogram_row(ax4, db, X, num_start_time, num_per_item,
+                                        row_label=row_label)
 
 plt.show()
