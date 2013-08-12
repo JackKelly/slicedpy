@@ -13,7 +13,7 @@ from sklearn.cluster import DBSCAN
 
 DATA_DIR = DD
 WINDOW_SIZE = 20
-N_SUBPLOTS = 4
+N_SUBPLOTS = 2
 START_DATE = '2013/6/4'
 END_DATE = '2013/6/4 18:00'
 
@@ -22,8 +22,8 @@ fig = plt.figure()
 fig.canvas.set_window_title(START_DATE + ' - ' + END_DATE)
 ax1 = fig.add_subplot(N_SUBPLOTS,1,1)
 ax2 = fig.add_subplot(N_SUBPLOTS,1,2, sharex=ax1)
-ax3 = fig.add_subplot(N_SUBPLOTS,1,3, sharex=ax1)
-ax4 = fig.add_subplot(N_SUBPLOTS,1,4, sharex=ax1)
+#ax3 = fig.add_subplot(N_SUBPLOTS,1,3, sharex=ax1)
+#ax4 = fig.add_subplot(N_SUBPLOTS,1,4, sharex=ax1)
 #ax5 = fig.add_subplot(N_SUBPLOTS,1,5, sharex=ax1)
 
 # LOAD AGGREGATE DATA
@@ -46,6 +46,14 @@ ax1.set_ylabel('watts')
 ax1.set_title('Aggregate. 1s active power, normalised.')
 ax1.legend()
 
+steady_states_mean = fd.steady_states_mean(c.series.values.astype(np.float32), 
+                                           max_range=15)
+for ssm in steady_states_mean:
+    ax1.plot([c.series.index[ssm.start], c.series.index[ssm.end]], 
+             [ssm.mean, ssm.mean], color='g', linewidth=4, alpha=0.8)
+
+
+
 # load dataset
 ds = load_dataset(DATA_DIR, ignore_chans=['aggregate', 'amp_livingroom', 'adsl_router',
                                           'livingroom_s_lamp', 'gigE_&_USBhub',
@@ -65,9 +73,9 @@ plot_each_channel_activity(ax2, ds)
 #######################
 # LINEAR REGRESSIONS
 
-print('Calculating linear regressions...')
-mlr = fd.multiple_linear_regressions(c.series.values, window_size=WINDOW_SIZE)
-print('Plotting linear regressions...')
-splt.plot_multiple_linear_regressions(ax3, mlr, c.series.index, WINDOW_SIZE, ax4)
+#print('Calculating linear regressions...')
+#mlr = fd.multiple_linear_regressions(c.series.values, window_size=WINDOW_SIZE)
+#print('Plotting linear regressions...')
+#splt.plot_multiple_linear_regressions(ax3, mlr, c.series.index, WINDOW_SIZE, ax4)
 
 plt.show()
