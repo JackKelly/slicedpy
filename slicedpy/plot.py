@@ -1,6 +1,31 @@
 import numpy as np
 import pylab as pl
 
+
+def plot_steady_states(ax, states, index, offset=0, 
+                       color='g', label='Steady state'):
+    """
+    Args:
+        ax (Axes)
+        states (list of Features with start, end and mean): Steady States
+        index (Pandas DatetimeIndex)
+        offset (int or float): add this to ss.mean
+        color (str)
+        label (str)
+
+    Returns:
+        line
+    """
+    for ss in states:
+        start = index[ss.start]
+        end = index[ss.end]
+        mean = ss.mean + offset
+        line, = ax.plot([start, end], [mean, mean], color=color, 
+                     linewidth=2, alpha=0.6)
+    line.set_label(label)
+    return line
+
+
 def plot_spike_histogram(ax, spike_histogram, bin_edges, 
                          num_start_time, num_end_time, title='Spike histogram'):
     """
@@ -88,3 +113,5 @@ def plot_multiple_linear_regressions(ax, mlr, x, window_size=10, ax2=None):
 
     if ax2:
         ax2.set_title('std_err')
+
+

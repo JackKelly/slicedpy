@@ -1,34 +1,59 @@
 #!/usr/bin/env python
 
-from pda.channel import Channel, DD    
+from pda.dataset import init_aggregate_and_appliance_dataset_figure
 import slicedpy.feature_detectors as fd
+from slicedpy.plot import plot_steady_states
 import matplotlib.pyplot as plt
 import pandas as pd
 
-DATA_DIR = DD
-c = Channel(DATA_DIR, 'aggregate')
-c = c.crop('2013/6/1', '2013/6/5')
+SMOOTHING = False
 
-steady_states = fd.steady_states(c.series.values)
+subplots, chan = init_aggregate_and_appliance_dataset_figure(
+    start_date='2013/6/4', end_date='2013/6/4 18:00',
+    n_subplots=3 if SMOOTHING else 2,
+    date_format='%H:%M:%S', alpha=0.6)
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
-ax.plot(c.series, color='k')
+########################
+# HART'S STEADY STATES
+print("Hart's steady states...")
+steady_states = fd.steady_states(chan.series.values)
+plot_steady_states(subplots[0], steady_states, chan.series.index, 
+                   color='b', label='Hart')
 
-for ss in steady_states:
-    ax.plot([ss.start, ss.end], [ss.mean, ss.mean], color='r')
+#####################
+# MEAN STEADY STATES
+print("Mean steady states...")
+mean_steady_states = fd.mean_steady_states(chan.series.values,
+                                           max_range=15)
+plot_steady_states(subplots[0], mean_steady_states, chan.series.index,
+                   offset=1, color='g', label='Mean')
 
-for win_type in ['boxcar', 'triang', 'blackman', 'hamming', 'bartlett',
-                 'parzen',
-                 'bohman',
-                 'blackmanharris',
-                 'nuttall',
-                 'barthann']:
-    smoothed = pd.rolling_window(c.series, 20, win_type, center=True)# .astype(fd.PW_DTYPE)
-    # ss_from_smoothed = fd.steady_states(smoothed)
-    ax.plot(smoothed, label=win_type)
-#for ss in ss_from_smoothed:
-#    ax.plot([ss.start, ss.end], [ss.mean, ss.mean], color='g') 
+#####################
+# SLIDING MEANS STEADY STATES
+print("Sliding mean steady states...")
+sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series.values,
+                                                           max_range=15)
+plot_steady_states(subplots[0], sliding_mean_steady_states, chan.series.index,
+                   offset=2, color='y', label='Sliding mean')
 
-plt.legend()
+#####################
+# RELATIVE DEVIATION STEADY STATES
+print("Relative deviation steady states...")
+relative_deviation_steady_states = fd.relative_deviation_steady_states(chan.series.values)
+plot_steady_states(subplots[0], relative_deviation_steady_states, 
+                   chan.series.index, offset=-1, color='c', label='Relative deviation')
+
+####################
+subplots[0].legend()
+
+######################
+# SMOOTHING
+if SMOOTHING:
+    print("Smoothing...")
+    smoothed = pd.rolling_mean(chan.series, 20, center=True).dropna().astype(fd.PW_DTYPE)
+    subplots[2].plot(smoothed.index, smoothed.values, label='smoothed', color='k')
+    ss_from_smoothed = fd.steady_states(smoothed.values)
+    plot_steady_states(subplots[2], ss_from_smoothed, color='b', index=smoothed.index)
+    subplots[2].legend()
+
 plt.show()

@@ -43,6 +43,8 @@ def _sanity_check_input_to_steady_state_detectors(
     if watts.size < min_n_samples:
         raise ValueError('watts array must have more than '
                          'min_n_samples={} elements!'.format(min_n_samples))
+    if np.any(np.isnan(watts)):
+        raise ValueError('Please remove all NaNs!')
 
 
 def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
@@ -208,3 +210,46 @@ def sliding_mean_steady_states(
         ss.append(feature)
             
     return ss
+
+def relative_deviation_steady_states(
+                  np.ndarray[PW_DTYPE_t, ndim=1] watts,
+                  PW_DTYPE_t rdt=0.05, # relative deviation threshold
+                  Py_ssize_t window_size=10):
+    """
+    Steady state detector designed to find "steady states" in the face of
+    a rapidly oscillating signal (e.g. a washing machine's motor).
+
+    Break watts into chunks, each of size window_size.  Calculate the mean
+    of the first chunk. Calculate the mean deviation of the second chunk
+    against the mean of the first chunk.  If this deviation is above rdt
+    then we've left a candidate steady state.  If we've been through 2 or
+    more chunks then store this steady state.  Repeat.
+    """
+
+    # TODO: Optimise:
+    #         * convert code to Cython (it's pure Python at the moment)
+    #         * don't calculate ss.mean() from scratch every iteration
+
+    def mean_relative_deviation(next_chunk, ss_mean):
+        """Convert to absolute value *after* calculating the mean.
+        The idea is that rapid oscillations should cancel themselves out."""
+        return np.fabs((next_chunk - ss_mean).mean() / ss_mean)
+
+    n_chunks = int(watts.size / window_size)
+    print("n_chunks =", n_chunks)
+    ss_start_i = 0
+    ss_end_i = window_size
+    steady_states = []
+    for chunk_i in range(n_chunks-2):
+        ss = watts[ss_start_i:ss_end_i]
+        next_chunk_end_i = (chunk_i+2)*window_size
+        next_chunk = watts[ss_end_i:next_chunk_end_i]
+        if mean_relative_deviation(next_chunk, ss.mean()) > rdt:
+            # new chunk marks the end of the steady state
+            if (ss_end_i - ss_start_i) / window_size > 1:
+                feature = Feature(start=ss_start_i, end=ss_end_i, mean=ss.mean())
+                steady_states.append(feature)
+            ss_start_i = ss_end_i
+        ss_end_i = next_chunk_end_i
+
+    return steady_states
