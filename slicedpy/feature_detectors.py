@@ -3,6 +3,7 @@ from _cython_feature_detectors import *
 import numpy as np
 import copy
 from scipy import stats
+import matplotlib.dates as mdates
 
 """
 This file implements feature detectors which are written in pure
@@ -24,7 +25,7 @@ def merge_spikes(fdiff):
             e.g. calculated by np.diff
 
     Returns: 
-        merged_fdiff (1D np.ndarray).  Will be zero where 
+        merged_fdiff (1D np.ndarray).  Will be zero prior to each merged spike.
     """
 
     sign_comparison = (fdiff[:-1] * fdiff[1:]) > 0
@@ -84,7 +85,7 @@ def spike_histogram_row_to_data_coordinates(row):
 
 
 ###############################################################################
-# 
+# multiple_linear_regressions
 ###############################################################################
 
 def multiple_linear_regressions(data, window_size=10):
@@ -115,3 +116,35 @@ def multiple_linear_regressions(data, window_size=10):
         results[i] = (slope, intercept, r_value**2, std_err)
 
     return results
+
+
+###############################################################################
+# 
+###############################################################################
+
+def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
+                     decay_window=10):
+
+    # Find spikes between min_spike_size and max_spike_size
+    fdiff = np.diff(series.values[:-decay_window])
+    fdiff = merge_spikes(fdiff)
+    if max_spike_size is None:
+        spike_indices = np.where(fdiff > min_spike_size)[0]
+    else:
+        assert(max_spike_size > min_spike_size)
+        spike_indices = np.where((fdiff > min_spike_size) & 
+                                 (fdiff < max_spike_size))[0]
+
+    spike_indices += 1
+
+    # For each spike, do linear regression of next decay_window values
+    features = []
+    for spike_i in spike_indices:
+        f = Feature(start=spike_i, end=spike_i+decay_window)
+        chunk = series[f.start:f.end]
+        x = mdates.date2num(chunk.index) * mdates.SEC_PER_DAY
+        (f.slope, _, f.r_value, 
+         f.p_value, f.stderr) = stats.linregress(x, chunk.values)
+        features.append(f)
+
+    return features

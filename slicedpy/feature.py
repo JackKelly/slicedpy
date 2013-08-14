@@ -1,4 +1,9 @@
+from __future__ import print_function, division
+import matplotlib.dates as mdates
+import scipy.stats as stats
+import numpy as np
 from bunch import Bunch
+
 
 class Feature(Bunch):
     """All feature detectors output a list of Feature objects.
@@ -6,10 +11,46 @@ class Feature(Bunch):
     plus zero or more other parameters specific to that feature detector.
 
     Attributes:
-        start: pandas.datetime64['s']
-        end: pandas.datetime64['s']
+        start (int): index into data array holding power data
+        end (int): index into data array holding power data
+        _p_value_both_halves (float): set by ttest_both_halves()
     """
     def __init__(self, start, end, **kwds):
         self.start = start
         self.end = end
         super(Feature, self).__init__(**kwds)
+
+    def ttest_both_halves(self, data):
+        """
+        Used for testing if the left and right half the data masked by this 
+        Feature has the same mean or not.
+
+        Returns and stores a two-tailed p-value.  
+        Stored in self.p_value_both_halves
+
+        Args:
+            data (np.ndarray)
+        """
+        width = self.end - self.start
+        half_way = int((width / 2) + self.start)
+        left = data[self.start:half_way]
+        right = data[half_way:self.end]
+        self.p_value_both_halves = stats.ttest_ind(left, right)[1]            
+        return self.p_value_both_halves
+
+    def linregress(self, series):
+        """
+        Linear regression of data masked by this feature.
+
+        slope is in units of watts per second.
+        Returns nothing.  Instead retrieve data from self.slope,
+        self.r_value, self.p_value, self.stderr
+
+        Args:
+            series (pd.Series)
+        """
+        ss = series[self.start:self.end]
+        x = mdates.date2num(ss.index) * mdates.SEC_PER_DAY
+        (self.slope, _, self.r_value, 
+         self.p_value, self.stderr) = stats.linregress(x, ss.values)
+
