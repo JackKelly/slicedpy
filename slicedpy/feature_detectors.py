@@ -3,6 +3,7 @@ from _cython_feature_detectors import *
 import numpy as np
 import copy
 from scipy import stats
+import scipy.optimize
 import matplotlib.dates as mdates
 
 """
@@ -122,11 +123,9 @@ def multiple_linear_regressions(data, window_size=10):
 # 
 ###############################################################################
 
-def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
-                     decay_window=10):
-
+def spike_indices(data, min_spike_size, max_spike_size=None):
     # Find spikes between min_spike_size and max_spike_size
-    fdiff = np.diff(series.values[:-decay_window])
+    fdiff = np.diff(data)
     fdiff = merge_spikes(fdiff)
     if max_spike_size is None:
         spike_indices = np.where(fdiff > min_spike_size)[0]
@@ -134,17 +133,39 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
         assert(max_spike_size > min_spike_size)
         spike_indices = np.where((fdiff > min_spike_size) & 
                                  (fdiff < max_spike_size))[0]
-
     spike_indices += 1
+    return spike_indices
+
+
+def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
+                            decay_window=10, mode='linear'):
+
+    def linear(f, x, values):
+        (f.slope, _, f.r_value, 
+         f.p_value, f.stderr) = stats.linregress(x, values)
+
+    curve = lambda x, c, m: c + (m / x)
+    def poly(f, x, values):        
+        f.popt, f.pconv = scipy.optimize.curve_fit(curve, (x-x[0])+1, values,
+                                                   p0=(values.min(), 281.5))
+
+    if mode=='linear':
+        regression_func = linear
+    elif mode=='poly':
+        regression_func = poly
+    else:
+        raise Exception('Mode \'' + mode + '\' not recognised')
+
+    spike_idxs = spike_indices(series.values[:-decay_window], 
+                               min_spike_size, max_spike_size)
 
     # For each spike, do linear regression of next decay_window values
     features = []
-    for spike_i in spike_indices:
+    for spike_i in spike_idxs:
         f = Feature(start=spike_i, end=spike_i+decay_window)
         chunk = series[f.start:f.end]
         x = mdates.date2num(chunk.index) * mdates.SEC_PER_DAY
-        (f.slope, _, f.r_value, 
-         f.p_value, f.stderr) = stats.linregress(x, chunk.values)
+        regression_func(f, x, chunk.values)
         features.append(f)
 
     return features

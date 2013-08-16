@@ -4,17 +4,19 @@ from pda.dataset import init_aggregate_and_appliance_dataset_figure
 import slicedpy.feature_detectors as fd
 from slicedpy.plot import plot_steady_states
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import numpy as np
 
 SLIDING_MEANS_STEADY_STATES = False
 RD_STEADY_STATES = False
 TTESTS = False
 SS_LINREGRESS = False
-STD = True # spike then decay
+STD = False # spike then decay
+STDP = True # spike then poly decay
 
 subplots, chan = init_aggregate_and_appliance_dataset_figure(
     start_date='2013/6/4', end_date='2013/6/5',
-    n_subplots=2 + np.array([TTESTS, SS_LINREGRESS, STD]).sum(),
+    n_subplots=2 + np.array([TTESTS, SS_LINREGRESS, STD, STDP, STDP]).sum(),
     date_format='%H:%M:%S', alpha=0.6)
 
 subplot_i = 2
@@ -69,14 +71,45 @@ if SS_LINREGRESS:
 # Spike then decay
 if STD:
     print("Calculating and plotting spike then decay...")
-    stds = fd.spike_then_decay(chan.series)
+    stds = fd.spike_then_decay(chan.series, mode='linear')
     for std in stds:
         start = chan.series.index[std.start]
         end = chan.series.index[std.end]
-        subplots[subplot_i].plot([start], [std.slope], 'o', markersize=6, color='r', linewidth=4)
+        subplots[subplot_i].plot([start], [std.slope],
+                                 'o', markersize=6, color='r', linewidth=4)
     subplots[subplot_i].set_title('Spike Then Decay')
     subplots[subplot_i].set_ylabel('slope in watts/second')
     subplots[subplot_i].grid()
     subplot_i += 1
+
+######################
+#
+# NEEDS 2 SUBPLOTS!
+if STDP:
+    print("Calculating and plotting spike then poly decay...")
+    stds = fd.spike_then_decay(chan.series, mode='poly')
+    curve = lambda x, c, m: c + (m / x)
+    for std in stds:
+        start = chan.series.index[std.start]
+        end = chan.series.index[std.end]
+        X = chan.series.index[std.start:std.end]
+        X = mdates.date2num(X)
+        x = X * mdates.SEC_PER_DAY
+        subplots[subplot_i].plot([start], [std.popt[1]],
+                                 'o', markersize=6, color='r', linewidth=4)
+        subplots[subplot_i+1].plot(X, 
+                                   curve((x-x[0])+1, std.popt[0], std.popt[1]),
+                                   color='r')
+
+    subplots[subplot_i].set_title('Spike Then poly Decay.  y = c + m/x')
+    subplots[subplot_i].set_ylabel('m')
+    subplots[subplot_i].grid()
+
+    subplots[subplot_i+1].set_title('Reconstructed curve')
+    subplots[subplot_i+1].set_ylabel('watts')
+    subplots[subplot_i+1].grid()
+
+    subplot_i += 2
+
 
 plt.show()
