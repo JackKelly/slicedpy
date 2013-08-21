@@ -219,22 +219,23 @@ def relative_deviation_steady_states(
 
 
 def min_max_steady_states(watts,
-                          max_deviation=15, # watts
+                          max_deviation=20, # watts
                           initial_window_size=20, # int: number of samples
+                          look_ahead=3, # int: number of samples
                           max_ptp=1000 # max peak to peak in watts
                           ):
     ss_start_i = 0
     ss_end_i = initial_window_size
     steady_states = []
     half_window = int(initial_window_size / 2)
+    n = watts.size - look_ahead
     while True:
-        if ss_end_i >= watts.size:
+        if ss_end_i >= n:
             break
 
-        next_sample = watts[ss_end_i]
         ss = watts[ss_start_i:ss_end_i]
-
-        if ss_end_i == ss_start_i + initial_window_size:
+        end_of_ss = False
+        if ss.size == initial_window_size:
             # this is an initial chunk so test it's a sane
             # chunk by comparing the means of the left and right side
             # of this chunk
@@ -247,16 +248,26 @@ def min_max_steady_states(watts,
                 ss_start_i += 1
                 ss_end_i += 1
                 continue
+        else:
+            # Take an *initial_window_size* chunk from the tail
+            # and make sure the front of the steady state
+            # falls within the min and max of the tail.
+            tail_split = ss_end_i-initial_window_size
+            front = watts[ss_start_i:tail_split]
+            tail = watts[tail_split:ss_end_i]
+            end_of_ss = (front.mean() < tail.min() - max_deviation or
+                         front.mean() > tail.max() + max_deviation)
 
-        if (next_sample < ss.min() - max_deviation or
-            next_sample > ss.max() + max_deviation):
+        ahead = watts[ss_end_i:ss_end_i+look_ahead]
+        if (ahead.mean() < ss.min() - max_deviation or
+            ahead.mean() > ss.max() + max_deviation or
+            end_of_ss):
             # We've come to the end of a candidate steady state
             feature = Feature(start=ss_start_i, end=ss_end_i-1,
                               mean=ss.mean())
             steady_states.append(feature)
             ss_start_i = ss_end_i
             ss_end_i = ss_start_i + initial_window_size
-
         else:
             ss_end_i += 1
 

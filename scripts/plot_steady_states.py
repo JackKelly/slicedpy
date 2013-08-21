@@ -10,13 +10,13 @@ from scipy.stats import *
 SMOOTHING = False
 
 subplots, chan = init_aggregate_and_appliance_dataset_figure(
-    start_date='2013/6/4 11:00', end_date='2013/6/4 12:00',
+    start_date='2013/6/4 11:00', end_date='2013/6/4 14:00',
     n_subplots=3 if SMOOTHING else 2,
     date_format='%H:%M:%S', alpha=0.6)
 
 ########################
 # HART'S STEADY STATES
-if False:
+if True:
     print("Hart's steady states...")
     steady_states = fd.steady_states(chan.series.values)
     plot_steady_states(subplots[0], steady_states, chan.series.index, 
@@ -24,7 +24,7 @@ if False:
 
 #####################
 # MEAN STEADY STATES
-if False:
+if True:
     print("Mean steady states...")
     mean_steady_states = fd.mean_steady_states(chan.series.values,
                                                max_range=15)
@@ -33,7 +33,7 @@ if False:
 
 #####################
 # SLIDING MEANS STEADY STATES
-if False:
+if True:
     print("Sliding mean steady states...")
     sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series.values,
                                                                max_range=15)
@@ -42,7 +42,7 @@ if False:
 
 #####################
 # RELATIVE DEVIATION STEADY STATES
-if False:
+if True:
     print("Relative deviation steady states...")
     relative_deviation_steady_states = fd.relative_deviation_steady_states(chan.series.values)
     plot_steady_states(subplots[0], relative_deviation_steady_states, 
@@ -60,7 +60,7 @@ if True:
 
 #####################
 # MIN MAX CHUNK STEADY STATES
-if False:
+if True:
     print("Mean chunk steady states...")
     mean_chunk_steady_states = fd.mean_chunk_steady_states(chan.series.values) 
     plot_steady_states(subplots[0], mean_chunk_steady_states, 
