@@ -52,15 +52,11 @@ def plot_spike_histogram(ax, spike_histogram, bin_edges,
     return ax
 
 
-def plot_clustered_spike_histogram_row(ax, db, X, num_start_time, 
-                                       num_per_item, row_label=''):
+def plot_clusters(ax, db, X, title_append=''):
     labels = db.labels_
     core_samples = db.core_sample_indices_
     unique_labels = set(labels)
     colors = pl.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
-
-    def i_to_num(i):
-        return num_start_time + (i*num_per_item)
 
     for k, col in zip(unique_labels, colors):
         if k == -1:
@@ -74,11 +70,11 @@ def plot_clustered_spike_histogram_row(ax, db, X, num_start_time,
                 markersize = 14
             else:
                 markersize = 6
-            ax.plot(i_to_num(x[0]), x[1], 'o', markerfacecolor=col, 
+            ax.plot(x[0], x[1], 'o', markerfacecolor=col, 
                     markeredgecolor='k', markersize=markersize)    
 
     ax.set_title('clustering using DBSCAN, eps={}, min_samples={}, {}'
-                  .format(db.eps, db.min_samples, row_label))
+                  .format(db.eps, db.min_samples, title_append))
     ax.set_ylabel('count')
     ax.set_xlabel('date time')
 

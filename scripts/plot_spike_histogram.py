@@ -54,10 +54,14 @@ num_time_range = num_end_time - num_start_time
 num_per_item = num_time_range / n_chunks
 row_label = ('row index={}, bin edges={:.0f}-{:.0f}W'
              .format(ROW_I, bin_edges[ROW_I], bin_edges[ROW_I+1]))
+i_to_num = np.vectorize(lambda i: num_start_time + (i*num_per_item))
 
-splt.plot_clustered_spike_histogram_row(subplots[3], db, X, 
-                                        num_start_time, num_per_item,
-                                        row_label=row_label)
+# Create new X_datetime where the the X coordinates 
+# are valid ordinal datetime numbers
+X_datetime = X.copy()
+X_datetime[:,0] = i_to_num(X[:,0])
+
+splt.plot_clusters(subplots[3], db, X_datetime, title_append=row_label)
 
 plt.show()
 print('Done')
