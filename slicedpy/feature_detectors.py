@@ -120,7 +120,7 @@ def multiple_linear_regressions(data, window_size=10):
 
 
 ###############################################################################
-# 
+# SPIKE THEN DECAY
 ###############################################################################
 
 def spike_indices(data, min_spike_size, max_spike_size=None):
@@ -169,3 +169,113 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
         features.append(f)
 
     return features
+
+###############################################################################
+# STEADY STATE DETECTORS (others are implemented in Cython)
+###############################################################################
+
+def relative_deviation_steady_states(
+                  watts,
+                  rdt=0.05, # relative deviation threshold
+                  window_size=10):
+    """
+    Steady state detector designed to find "steady states" in the face of
+    a rapidly oscillating signal (e.g. a washing machine's motor).
+
+    Break watts into chunks, each of size window_size.  Calculate the mean
+    of the first chunk. Calculate the mean deviation of the second chunk
+    against the mean of the first chunk.  If this deviation is above rdt
+    then we've left a candidate steady state.  If we've been through 2 or
+    more chunks then store this steady state.  Repeat.
+    """
+
+    # TODO: Optimise:
+    # * convert code to Cython (it's pure Python at the moment)
+    # * don't calculate ss.mean() from scratch every iteration
+
+    def mean_relative_deviation(next_chunk, ss_mean):
+        """Convert to absolute value *after* calculating the mean.
+        The idea is that rapid oscillations should cancel themselves out."""
+        return np.fabs((next_chunk - ss_mean).mean() / ss_mean)
+
+    n_chunks = int(watts.size / window_size)
+    print("n_chunks =", n_chunks)
+    ss_start_i = 0
+    ss_end_i = window_size
+    steady_states = []
+    for chunk_i in range(n_chunks-2):
+        ss = watts[ss_start_i:ss_end_i]
+        next_chunk_end_i = (chunk_i+2)*window_size
+        next_chunk = watts[ss_end_i:next_chunk_end_i]
+        if mean_relative_deviation(next_chunk, ss.mean()) > rdt:
+            # new chunk marks the end of the steady state
+            if (ss_end_i - ss_start_i) / window_size > 1:
+                feature = Feature(start=ss_start_i, end=ss_end_i, mean=ss.mean())
+                steady_states.append(feature)
+            ss_start_i = ss_end_i
+        ss_end_i = next_chunk_end_i
+
+    return steady_states
+
+
+def min_max_steady_states(watts, 
+                          max_deviation=15, # watts
+                          initial_window_size=20, # int: number of samples
+                          max_ptp=1000 # max peak to peak in watts
+                          ):
+    ss_start_i = 0
+    ss_end_i = initial_window_size
+    steady_states = []
+    half_window = int(initial_window_size / 2)
+    while True:
+        try:
+            ss = watts[ss_start_i:ss_end_i]
+            next_sample = watts[ss_end_i]
+        except IndexError:
+            break
+
+        if ss_end_i == ss_start_i + initial_window_size:
+            # this is an initial chunk so test it's a sane
+            # chunk by comparing the means of the left and right side
+            # of this chunk
+            halfway = ss_start_i + half_window
+            left = watts[ss_start_i:halfway]
+            right = watts[halfway:ss_end_i]
+            if (np.fabs(left.min() - right.min()) > max_deviation or
+                np.fabs(left.max() - right.max()) > max_deviation or
+                ss.ptp() > max_ptp):
+                ss_start_i += 1
+                ss_end_i += 1
+                continue
+
+        if (next_sample < ss.min() - max_deviation or
+            next_sample > ss.max() + max_deviation):
+            # We've come to the end of a candidate steady state
+            feature = Feature(start=ss_start_i, end=ss_end_i-1, 
+                              mean=ss.mean())
+            steady_states.append(feature)
+            ss_start_i = ss_end_i
+            ss_end_i = ss_start_i + initial_window_size
+
+        else:
+            ss_end_i += 1
+
+    return steady_states
+
+
+def mean_chunk_steady_states(watts, max_deviation=10, window_size=10):
+    ss_start_i = 0
+    steady_states = []
+    n_chunks = int(watts.size / window_size)
+    for chunk_i in range(1,n_chunks-2):
+        ss_end_i = window_size * chunk_i
+        ss = watts[ss_start_i:ss_end_i]
+        next_chunk = watts[ss_end_i:ss_end_i+window_size]
+        if (next_chunk.mean() > ss.mean() + max_deviation or
+            next_chunk.mean() < ss.mean() - max_deviation):
+            # We've come to the end of a candidate steady state
+            feature = Feature(start=ss_start_i, end=ss_end_i, mean=ss.mean())
+            steady_states.append(feature)
+            ss_start_i = ss_end_i
+
+    return steady_states

@@ -16,13 +16,15 @@ def plot_steady_states(ax, states, index, offset=0,
     Returns:
         line
     """
+    line = None
     for ss in states:
         start = index[ss.start]
         end = index[ss.end]
         mean = ss.mean + offset
         line, = ax.plot([start, end], [mean, mean], color=color, 
                      linewidth=2, alpha=0.6)
-    line.set_label(label)
+    if line is not None:
+        line.set_label(label)
     return line
 
 
@@ -77,8 +79,7 @@ def plot_clusters(ax, db, X, title_append='', scale_x=1):
                 markersize = 3
             # ax.plot(x[0], x[1], 'o', markerfacecolor=col, 
             #         markeredgecolor='k', markersize=markersize)    
-            ax.plot(x[0], x[1], '.', color=col, markersize=markersize)    
-
+            ax.plot(x[0], x[1], '.', color=col, markersize=markersize)
 
     ax.set_title('clustering using DBSCAN, eps={}, min_samples={}, {}'
                   .format(db.eps, db.min_samples, title_append))
