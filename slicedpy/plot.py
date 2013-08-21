@@ -52,11 +52,16 @@ def plot_spike_histogram(ax, spike_histogram, bin_edges,
     return ax
 
 
-def plot_clusters(ax, db, X, title_append=''):
+def plot_clusters(ax, db, X, title_append='', scale_x=1):
     labels = db.labels_
     core_samples = db.core_sample_indices_
     unique_labels = set(labels)
     colors = pl.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
+    if scale_x == 1:
+        X_copy = X
+    else:
+        X_copy = X.copy()
+        X_copy[:,0] *= scale_x
 
     for k, col in zip(unique_labels, colors):
         if k == -1:
@@ -65,13 +70,15 @@ def plot_clusters(ax, db, X, title_append=''):
             markersize = 6
         class_members = [index[0] for index in np.argwhere(labels == k)]
         for index in class_members:
-            x = X[index]
+            x = X_copy[index]
             if index in core_samples and k != -1:
-                markersize = 14
-            else:
                 markersize = 6
-            ax.plot(x[0], x[1], 'o', markerfacecolor=col, 
-                    markeredgecolor='k', markersize=markersize)    
+            else:
+                markersize = 3
+            # ax.plot(x[0], x[1], 'o', markerfacecolor=col, 
+            #         markeredgecolor='k', markersize=markersize)    
+            ax.plot(x[0], x[1], '.', color=col, markersize=markersize)    
+
 
     ax.set_title('clustering using DBSCAN, eps={}, min_samples={}, {}'
                   .format(db.eps, db.min_samples, title_append))
