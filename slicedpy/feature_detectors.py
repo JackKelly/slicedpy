@@ -218,7 +218,7 @@ def relative_deviation_steady_states(
     return steady_states
 
 
-def min_max_steady_states(watts, 
+def min_max_steady_states(watts,
                           max_deviation=15, # watts
                           initial_window_size=20, # int: number of samples
                           max_ptp=1000 # max peak to peak in watts
@@ -228,11 +228,11 @@ def min_max_steady_states(watts,
     steady_states = []
     half_window = int(initial_window_size / 2)
     while True:
-        try:
-            ss = watts[ss_start_i:ss_end_i]
-            next_sample = watts[ss_end_i]
-        except IndexError:
+        if ss_end_i >= watts.size:
             break
+
+        next_sample = watts[ss_end_i]
+        ss = watts[ss_start_i:ss_end_i]
 
         if ss_end_i == ss_start_i + initial_window_size:
             # this is an initial chunk so test it's a sane
@@ -251,12 +251,51 @@ def min_max_steady_states(watts,
         if (next_sample < ss.min() - max_deviation or
             next_sample > ss.max() + max_deviation):
             # We've come to the end of a candidate steady state
-            feature = Feature(start=ss_start_i, end=ss_end_i-1, 
+            feature = Feature(start=ss_start_i, end=ss_end_i-1,
                               mean=ss.mean())
             steady_states.append(feature)
             ss_start_i = ss_end_i
             ss_end_i = ss_start_i + initial_window_size
 
+        else:
+            ss_end_i += 1
+
+    return steady_states
+
+
+def min_max_two_halves_steady_states(watts, 
+                                     max_deviation=20, # watts
+                                     initial_window_size=20, # int: n samples
+                                     max_ptp=1000 # max peak to peak in watts
+                                    ):
+    ss_start_i = 0
+    ss_end_i = initial_window_size
+    steady_states = []
+    while True:
+        if ss_end_i >= watts.size:
+            break
+
+        ss = watts[ss_start_i:ss_end_i]
+
+        # test it's a sane
+        # chunk by comparing the means of the left and right side
+        halfway = int((ss_start_i + ss_end_i) / 2)
+        left = watts[ss_start_i:halfway]
+        right = watts[halfway:ss_end_i]
+        
+        if (np.fabs(left.min() - right.min()) > max_deviation or
+            np.fabs(left.max() - right.max()) > max_deviation or
+            ss.ptp() > max_ptp):
+            if ss_end_i == ss_start_i + initial_window_size:
+                ss_start_i += 1
+                ss_end_i += 1
+            else:
+                # We've come to the end of a candidate steady state
+                feature = Feature(start=ss_start_i, end=ss_end_i-1, 
+                                  mean=ss.mean())
+                steady_states.append(feature)
+                ss_start_i = ss_end_i
+                ss_end_i = ss_start_i + initial_window_size
         else:
             ss_end_i += 1
 
