@@ -6,14 +6,16 @@ from bunch import Bunch
 
 
 class Feature(Bunch):
-    """All feature detectors output a list of Feature objects.
-    The idea is that all Features must have a start and an end timestamp
-    plus zero or more other parameters specific to that feature detector.
+    """All feature detectors output a list of :class:`Feature` objects.
+    The idea is that all Features must have a ``start`` and an ``end``
+    timestamp plus zero or more other parameters specific to that
+    feature detector.
 
     Attributes:
-        start (int): index into data array holding power data
-        end (int): index into data array holding power data
-        _p_value_both_halves (float): set by ttest_both_halves()
+        * ``start`` (int): index into data array holding power data
+        * ``end`` (int): index into data array holding power data
+        * ``_p_value_both_halves`` (float): set by ttest_both_halves()
+
     """
     def __init__(self, start, end, **kwds):
         self.start = start
@@ -22,14 +24,14 @@ class Feature(Bunch):
 
     def ttest_both_halves(self, data):
         """
-        Used for testing if the left and right half the data masked by this 
-        Feature has the same mean or not.
+        Test if the left and right half of the data masked by this 
+        Feature have the same mean or not.
 
         Returns and stores a two-tailed p-value.  
-        Stored in self.p_value_both_halves
+        Stored in ``self.p_value_both_halves``
 
         Args:
-            data (np.ndarray)
+          * data (np.ndarray)
         """
         width = self.end - self.start
         half_way = int((width / 2) + self.start)
@@ -42,12 +44,14 @@ class Feature(Bunch):
         """
         Linear regression of data masked by this feature.
 
-        slope is in units of watts per second.
-        Returns nothing.  Instead retrieve data from self.slope,
-        self.r_value, self.p_value, self.stderr
+        Returns nothing.  Instead sets member variables:
+          * ``self.slope`` (in units of watts per second)
+          * ``self.r_value``
+          * ``self.p_value``
+          * ``self.stderr``
 
-        Args:
-            series (pd.Series)
+        Args
+          * series (:class:`pandas.Series`)
         """
         ss = series[self.start:self.end]
         x = mdates.date2num(ss.index) * mdates.SEC_PER_DAY

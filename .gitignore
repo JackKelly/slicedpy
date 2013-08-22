@@ -8,6 +8,7 @@ profile.txt
 *.h5
 
 build/
+_build/
 *.egg-info/
 dist/
 .ropeproject/

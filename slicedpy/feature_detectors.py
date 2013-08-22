@@ -94,11 +94,17 @@ def multiple_linear_regressions(data, window_size=10):
         data (np.ndarray): power.
         window_size (int): Width of each windows in number of samples.  
             Must be multiple of 2.  Windows are overlapping:
-              2222
-            11113333
+
+    ::
+
+                2222
+              11113333
     Return:
         np.ndarray(n_windows, 4): the 4 columns are: 
-            slope, intercept, r_value**2, std_err
+          1. slope
+          2. intercept
+          3. :math:`\\text{r_value} ^2`
+          4. std_err
     """
     assert((window_size % 2) == 0)
 
@@ -179,11 +185,13 @@ def relative_deviation_power_states(
     """Power state detector designed to find "power states" in the face of
     a rapidly oscillating signal (e.g. a washing machine's motor).
 
-    Break *watts* into chunks, each of size *window_size*.  Calculate the mean
-    of the first chunk. Calculate the mean deviation of the second chunk
-    against the mean of the first chunk.  If this deviation is above *rdt*
-    then we've left a candidate power state.  If we've been through 2 or
-    more chunks then store this power state.  Repeat.
+    Break ``watts`` into chunks, each of size ``window_size``.
+    Calculate the mean of the first chunk. Calculate the mean
+    deviation of the second chunk against the mean of the first chunk.
+    If this deviation is above ``rdt`` then we've left a candidate power
+    state.  If we've been through 2 or more chunks then store this
+    power state.  Repeat.
+
     """
 
     # TODO: Optimise:
