@@ -223,12 +223,33 @@ def relative_deviation_power_states(
     return power_states
 
 
-def min_max_power_states(watts,
-                          max_deviation=20, # watts
-                          initial_window_size=30, # int: number of samples
-                          look_ahead=3, # int: number of samples
-                          max_ptp=1000 # max peak to peak in watts
-                          ):
+def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
+                         look_ahead=3, max_ptp=1000):
+    """Power state detector which looks for periods with similar min
+    and max values.
+
+    Find "power states" by first taking an initial window of size
+    ``initial_window_size``.  Check that this window is "sane" by
+    splitting it in half and comparing the min and max of the two
+    halves.  If this window is sane then take the average of
+    ``look_ahead`` samples ahead of the end of the window and see if
+    this average is within ``max_deviation`` of the min and max of the
+    window.  If it is then add ``look_ahead`` onto the window and
+    repeat.  Also take the tail of the window and check that the mean
+    of the front of the window falls within ``max_deviation`` of the
+    min and max of the tail (this helps to make sure we end the power
+    state early enough in a situation where we go from a section with a 
+    large min and max to a section with a similar mean but smaller min
+    and max).
+
+    Args:
+      * watts (np.ndarray)
+      * max_deviation (float): watts
+      * initial_window_size (int): number of samples
+      * look_ahead (int): number of samples
+      * max_ptp (float): max peak to peak in watts
+    """
+
     ps_start_i = 0
     ps_end_i = initial_window_size
     power_states = []
@@ -254,9 +275,9 @@ def min_max_power_states(watts,
                 ps_end_i += 1
                 continue
         else:
-            # Take an *initial_window_size* chunk from the tail
-            # and make sure the front of the power state
-            # falls within the min and max of the tail.
+            # Take an ``initial_window_size`` chunk from the tail
+            # and make sure the mean of the front of the power state
+            # falls within max_deviation of the min and max of the tail.
             tail_split = ps_end_i-initial_window_size
             front = watts[ps_start_i:tail_split]
             tail = watts[tail_split:ps_end_i]
@@ -276,7 +297,7 @@ def min_max_power_states(watts,
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
-            ps_end_i += 1
+            ps_end_i += look_ahead
 
     return power_states
 
