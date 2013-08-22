@@ -18,8 +18,7 @@ for pre-processing prior to using feature detectors.
 ###############################################################################
 
 def merge_spikes(fdiff):
-    """
-    Merge consecutive forward difference values of the same sign.
+    """Merge consecutive forward difference values of the same sign.
 
     Args:
         fdiff (1D np.ndarray): forward difference of power. 
@@ -171,241 +170,239 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
     return features
 
 ###############################################################################
-# STEADY STATE DETECTORS (others are implemented in Cython)
+# POWER STATE DETECTORS
 ###############################################################################
-
-def relative_deviation_steady_states(
+def relative_deviation_power_states(
                   watts,
                   rdt=0.05, # relative deviation threshold
                   window_size=10):
-    """
-    Steady state detector designed to find "steady states" in the face of
+    """Power state detector designed to find "power states" in the face of
     a rapidly oscillating signal (e.g. a washing machine's motor).
 
-    Break watts into chunks, each of size window_size.  Calculate the mean
+    Break *watts* into chunks, each of size *window_size*.  Calculate the mean
     of the first chunk. Calculate the mean deviation of the second chunk
-    against the mean of the first chunk.  If this deviation is above rdt
-    then we've left a candidate steady state.  If we've been through 2 or
-    more chunks then store this steady state.  Repeat.
+    against the mean of the first chunk.  If this deviation is above *rdt*
+    then we've left a candidate power state.  If we've been through 2 or
+    more chunks then store this power state.  Repeat.
     """
 
     # TODO: Optimise:
-    # * convert code to Cython (it's pure Python at the moment)
-    # * don't calculate ss.mean() from scratch every iteration
+    # * convert code to Cython 
+    # * don't calculate ps.mean() from scratch every iteration
 
-    def mean_relative_deviation(next_chunk, ss_mean):
-        """Convert to absolute value *after* calculating the mean.
+    def mean_relative_deviation(next_chunk, ps_mean):
+        """Convert to absolute value _after_ calculating the mean.
         The idea is that rapid oscillations should cancel themselves out."""
-        return np.fabs((next_chunk - ss_mean).mean() / ss_mean)
+        return np.fabs((next_chunk - ps_mean).mean() / ps_mean)
 
     n_chunks = int(watts.size / window_size)
     print("n_chunks =", n_chunks)
-    ss_start_i = 0
-    ss_end_i = window_size
-    steady_states = []
+    ps_start_i = 0
+    ps_end_i = window_size
+    power_states = []
     for chunk_i in range(n_chunks-2):
-        ss = watts[ss_start_i:ss_end_i]
+        ps = watts[ps_start_i:ps_end_i]
         next_chunk_end_i = (chunk_i+2)*window_size
-        next_chunk = watts[ss_end_i:next_chunk_end_i]
-        if mean_relative_deviation(next_chunk, ss.mean()) > rdt:
-            # new chunk marks the end of the steady state
-            if (ss_end_i - ss_start_i) / window_size > 1:
-                feature = Feature(start=ss_start_i, end=ss_end_i, mean=ss.mean())
-                steady_states.append(feature)
-            ss_start_i = ss_end_i
-        ss_end_i = next_chunk_end_i
+        next_chunk = watts[ps_end_i:next_chunk_end_i]
+        if mean_relative_deviation(next_chunk, ps.mean()) > rdt:
+            # new chunk marks the end of the power state
+            if (ps_end_i - ps_start_i) / window_size > 1:
+                feature = Feature(start=ps_start_i, end=ps_end_i, mean=ps.mean())
+                power_states.append(feature)
+            ps_start_i = ps_end_i
+        ps_end_i = next_chunk_end_i
 
-    return steady_states
+    return power_states
 
 
-def min_max_steady_states(watts,
+def min_max_power_states(watts,
                           max_deviation=20, # watts
                           initial_window_size=30, # int: number of samples
                           look_ahead=3, # int: number of samples
                           max_ptp=1000 # max peak to peak in watts
                           ):
-    ss_start_i = 0
-    ss_end_i = initial_window_size
-    steady_states = []
+    ps_start_i = 0
+    ps_end_i = initial_window_size
+    power_states = []
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
-        if ss_end_i >= n:
+        if ps_end_i >= n:
             break
 
-        ss = watts[ss_start_i:ss_end_i]
-        end_of_ss = False
-        if ss.size == initial_window_size:
+        ps = watts[ps_start_i:ps_end_i]
+        end_of_ps = False
+        if ps.size == initial_window_size:
             # this is an initial chunk so test it's a sane
             # chunk by comparing the means of the left and right side
             # of this chunk
-            halfway = ss_start_i + half_window
-            left = watts[ss_start_i:halfway]
-            right = watts[halfway:ss_end_i]
+            halfway = ps_start_i + half_window
+            left = watts[ps_start_i:halfway]
+            right = watts[halfway:ps_end_i]
             if (np.fabs(left.min() - right.min()) > max_deviation or
                 np.fabs(left.max() - right.max()) > max_deviation or
-                ss.ptp() > max_ptp):
-                ss_start_i += 1
-                ss_end_i += 1
+                ps.ptp() > max_ptp):
+                ps_start_i += 1
+                ps_end_i += 1
                 continue
         else:
             # Take an *initial_window_size* chunk from the tail
-            # and make sure the front of the steady state
+            # and make sure the front of the power state
             # falls within the min and max of the tail.
-            tail_split = ss_end_i-initial_window_size
-            front = watts[ss_start_i:tail_split]
-            tail = watts[tail_split:ss_end_i]
+            tail_split = ps_end_i-initial_window_size
+            front = watts[ps_start_i:tail_split]
+            tail = watts[tail_split:ps_end_i]
             if (front.mean() < tail.min() - max_deviation or
                 front.mean() > tail.max() + max_deviation):
-                end_of_ss = True
-                ss_end_i = tail_split
+                end_of_ps = True
+                ps_end_i = tail_split
 
-        ahead = watts[ss_end_i:ss_end_i+look_ahead]
-        if (ahead.mean() < ss.min() - max_deviation or
-            ahead.mean() > ss.max() + max_deviation or
-            end_of_ss):
-            # We've come to the end of a candidate steady state
-            feature = Feature(start=ss_start_i, end=ss_end_i-1,
-                              mean=ss.mean())
-            steady_states.append(feature)
-            ss_start_i = ss_end_i
-            ss_end_i = ss_start_i + initial_window_size
+        ahead = watts[ps_end_i:ps_end_i+look_ahead]
+        if (ahead.mean() < ps.min() - max_deviation or
+            ahead.mean() > ps.max() + max_deviation or
+            end_of_ps):
+            # We've come to the end of a candidate power state
+            feature = Feature(start=ps_start_i, end=ps_end_i-1,
+                              mean=ps.mean())
+            power_states.append(feature)
+            ps_start_i = ps_end_i
+            ps_end_i = ps_start_i + initial_window_size
         else:
-            ss_end_i += 1
+            ps_end_i += 1
 
-    return steady_states
+    return power_states
 
 
-def min_max_two_halves_steady_states(watts, 
-                                     max_deviation=20, # watts
-                                     initial_window_size=20, # int: n samples
-                                     max_ptp=1000 # max peak to peak in watts
+def min_max_two_halves_power_states(watts, 
+                                    max_deviation=20, # watts
+                                    initial_window_size=20, # int: n samples
+                                    max_ptp=1000 # max peak to peak in watts
                                     ):
-    ss_start_i = 0
-    ss_end_i = initial_window_size
-    steady_states = []
+    ps_start_i = 0
+    ps_end_i = initial_window_size
+    power_states = []
     while True:
-        if ss_end_i >= watts.size:
+        if ps_end_i >= watts.size:
             break
 
-        ss = watts[ss_start_i:ss_end_i]
+        ps = watts[ps_start_i:ps_end_i]
 
         # test it's a sane
         # chunk by comparing the means of the left and right side
-        halfway = int((ss_start_i + ss_end_i) / 2)
-        left = watts[ss_start_i:halfway]
-        right = watts[halfway:ss_end_i]
+        halfway = int((ps_start_i + ps_end_i) / 2)
+        left = watts[ps_start_i:halfway]
+        right = watts[halfway:ps_end_i]
         
         if (np.fabs(left.min() - right.min()) > max_deviation or
             np.fabs(left.max() - right.max()) > max_deviation or
-            ss.ptp() > max_ptp):
-            if ss_end_i == ss_start_i + initial_window_size:
-                ss_start_i += 1
-                ss_end_i += 1
+            ps.ptp() > max_ptp):
+            if ps_end_i == ps_start_i + initial_window_size:
+                ps_start_i += 1
+                ps_end_i += 1
             else:
-                # We've come to the end of a candidate steady state
-                feature = Feature(start=ss_start_i, end=ss_end_i-1, 
-                                  mean=ss.mean())
-                steady_states.append(feature)
-                ss_start_i = ss_end_i
-                ss_end_i = ss_start_i + initial_window_size
+                # We've come to the end of a candidate power state
+                feature = Feature(start=ps_start_i, end=ps_end_i-1, 
+                                  mean=ps.mean())
+                power_states.append(feature)
+                ps_start_i = ps_end_i
+                ps_end_i = ps_start_i + initial_window_size
         else:
-            ss_end_i += 1
+            ps_end_i += 1
 
-    return steady_states
+    return power_states
 
 
-def mean_chunk_steady_states(watts, max_deviation=10, window_size=10):
-    ss_start_i = 0
-    steady_states = []
+def mean_chunk_power_states(watts, max_deviation=10, window_size=10):
+    ps_start_i = 0
+    power_states = []
     n_chunks = int(watts.size / window_size)
     for chunk_i in range(1,n_chunks-2):
-        ss_end_i = window_size * chunk_i
-        ss = watts[ss_start_i:ss_end_i]
-        next_chunk = watts[ss_end_i:ss_end_i+window_size]
-        if (next_chunk.mean() > ss.mean() + max_deviation or
-            next_chunk.mean() < ss.mean() - max_deviation):
-            # We've come to the end of a candidate steady state
-            feature = Feature(start=ss_start_i, end=ss_end_i, mean=ss.mean())
-            steady_states.append(feature)
-            ss_start_i = ss_end_i
+        ps_end_i = window_size * chunk_i
+        ps = watts[ps_start_i:ps_end_i]
+        next_chunk = watts[ps_end_i:ps_end_i+window_size]
+        if (next_chunk.mean() > ps.mean() + max_deviation or
+            next_chunk.mean() < ps.mean() - max_deviation):
+            # We've come to the end of a candidate power state
+            feature = Feature(start=ps_start_i, end=ps_end_i, mean=ps.mean())
+            power_states.append(feature)
+            ps_start_i = ps_end_i
 
-    return steady_states
+    return power_states
 
 
-def minimise_mean_deviation_steady_states(watts,
-                                          max_deviation=20, # watts
-                                          initial_window_size=30, # int: number of samples
-                                          look_ahead=150, # int: number of samples
-                                          max_ptp=1000 # max peak-to-peak watts
-                                      ):
-    ss_start_i = 0
-    ss_end_i = initial_window_size
-    steady_states = []
+def minimise_mean_deviation_power_states(watts,
+                                         max_deviation=20, # watts
+                                         initial_window_size=30, # int: number of samples
+                                         look_ahead=150, # int: number of samples
+                                         max_ptp=1000 # max peak-to-peak watts
+                                         ):
+    ps_start_i = 0
+    ps_end_i = initial_window_size
+    power_states = []
     quarter_window = int(initial_window_size / 4)
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
-        if ss_end_i >= n:
+        if ps_end_i >= n:
             break
 
-        # start_i = ss_start_i
-        # end_i = ss_end_i
-        # ss = watts[start_i:end_i]
+        # start_i = ps_start_i
+        # end_i = ps_end_i
+        # ps = watts[start_i:end_i]
 
-        # if ss_end_i == ss_start_i + initial_window_size:
+        # if ps_end_i == ps_start_i + initial_window_size:
         #     # Tweak start and end to minimise skew
         #     min_skew = np.finfo(float).max
         #     start_i = None
         #     end_i = None
-        #     for start_i in range(ss_start_i, ss_start_i+quarter_window):
-        #         for end_i in range(ss_end_i-quarter_window, ss_end_i):
-        #             ss = watts[start_i:end_i]
-        #             skew = np.fabs(stats.skew(ss))
+        #     for start_i in range(ps_start_i, ps_start_i+quarter_window):
+        #         for end_i in range(ps_end_i-quarter_window, ps_end_i):
+        #             ps = watts[start_i:end_i]
+        #             skew = np.fabs(stats.skew(ps))
         #             if skew < min_skew:
         #                 min_skew = skew
         #                 start_i = start_i
         #                 end_i = end_i
-        #     ss_start_i = start_i
-        #     ss_end_i = end_i
+        #     ps_start_i = start_i
+        #     ps_end_i = end_i
 
         # this is an initial chunk so test it's a sane
         # chunk by comparing the means of the left and right side
         # of this chunk
-        ss = watts[ss_start_i:ss_end_i]
-        if ss_end_i == ss_start_i + initial_window_size:
-            halfway = ss_start_i + half_window
-            left = watts[ss_start_i:halfway]
-            right = watts[halfway:ss_end_i]
+        ps = watts[ps_start_i:ps_end_i]
+        if ps_end_i == ps_start_i + initial_window_size:
+            halfway = ps_start_i + half_window
+            left = watts[ps_start_i:halfway]
+            right = watts[halfway:ps_end_i]
             if (np.fabs(left.min() - right.min()) > max_deviation or
                 np.fabs(left.max() - right.max()) > max_deviation or
-                ss.ptp() > max_ptp):
-                ss_start_i += 1
-                ss_end_i += 1
+                ps.ptp() > max_ptp):
+                ps_start_i += 1
+                ps_end_i += 1
                 continue
 
-        # Now creep forwards from ss_end_i and find the index which
-        # gives the lowest deviation of the mean of the steady state
+        # Now creep forwards from ps_end_i and find the index which
+        # gives the lowest deviation of the mean of the power state
         # against the mean of the look ahead chunk.
         min_deviation = np.finfo(np.float64).max
         i_of_lowest = None
-        ss_mean = ss.mean()
-        for look_ahead_i in range(ss_end_i+1, ss_end_i+look_ahead):
-            ahead = watts[ss_end_i:look_ahead_i]
+        ps_mean = ps.mean()
+        for look_ahead_i in range(ps_end_i+1, ps_end_i+look_ahead):
+            ahead = watts[ps_end_i:look_ahead_i]
             # TODO: don't recalculate ahead.mean() from scratch every iteration
-            deviation = np.fabs(ahead.mean() - ss_mean)
+            deviation = np.fabs(ahead.mean() - ps_mean)
             if deviation <= min_deviation:
                 min_deviation = deviation
                 i_of_lowest = look_ahead_i
 
         # Now we've found the index of the minimum deviation
         if min_deviation <= max_deviation:
-            ss_end_i = i_of_lowest
+            ps_end_i = i_of_lowest
         else:
-            # End of steady state
-            feature = Feature(start=ss_start_i, end=ss_end_i-1, mean=ss.mean())
-            steady_states.append(feature)
-            ss_start_i = ss_end_i
-            ss_end_i = ss_start_i + initial_window_size
+            # End of power state
+            feature = Feature(start=ps_start_i, end=ps_end_i-1, mean=ps.mean())
+            power_states.append(feature)
+            ps_start_i = ps_end_i
+            ps_end_i = ps_start_i + initial_window_size
 
-    return steady_states
+    return power_states
