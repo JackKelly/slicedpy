@@ -5,6 +5,9 @@ import copy
 from scipy import stats
 import scipy.optimize
 import matplotlib.dates as mdates
+import math
+import slicedpy.stats as spstats
+from slicedpy.powerstate import PowerState
 
 """
 This file implements feature detectors which are written in pure
@@ -201,7 +204,7 @@ def relative_deviation_power_states(
     def mean_relative_deviation(next_chunk, ps_mean):
         """Convert to absolute value _after_ calculating the mean.
         The idea is that rapid oscillations should cancel themselves out."""
-        return np.fabs((next_chunk - ps_mean).mean() / ps_mean)
+        return math.fabs((next_chunk - ps_mean).mean() / ps_mean)
 
     n_chunks = int(watts.size / window_size)
     print("n_chunks =", n_chunks)
@@ -268,8 +271,8 @@ def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
             halfway = ps_start_i + half_window
             left = watts[ps_start_i:halfway]
             right = watts[halfway:ps_end_i]
-            if (np.fabs(left.min() - right.min()) > max_deviation or
-                np.fabs(left.max() - right.max()) > max_deviation or
+            if (math.fabs(left.min() - right.min()) > max_deviation or
+                math.fabs(left.max() - right.max()) > max_deviation or
                 ps.ptp() > max_ptp):
                 ps_start_i += 1
                 ps_end_i += 1
@@ -292,7 +295,7 @@ def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
             end_of_ps):
             # We've come to the end of a candidate power state
             feature = Feature(start=ps_start_i, end=ps_end_i-1,
-                              mean=ps.mean())
+                              mean=ps.mean(), size=ps.size, var=ps.var())
             power_states.append(feature)
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
@@ -322,8 +325,8 @@ def min_max_two_halves_power_states(watts,
         left = watts[ps_start_i:halfway]
         right = watts[halfway:ps_end_i]
         
-        if (np.fabs(left.min() - right.min()) > max_deviation or
-            np.fabs(left.max() - right.max()) > max_deviation or
+        if (math.fabs(left.min() - right.min()) > max_deviation or
+            math.fabs(left.max() - right.max()) > max_deviation or
             ps.ptp() > max_ptp):
             if ps_end_i == ps_start_i + initial_window_size:
                 ps_start_i += 1
@@ -382,8 +385,8 @@ def minimise_mean_deviation_power_states(watts,
             halfway = ps_start_i + half_window
             left = watts[ps_start_i:halfway]
             right = watts[halfway:ps_end_i]
-            if (np.fabs(left.min() - right.min()) > max_deviation or
-                np.fabs(left.max() - right.max()) > max_deviation or
+            if (math.fabs(left.min() - right.min()) > max_deviation or
+                math.fabs(left.max() - right.max()) > max_deviation or
                 ps.ptp() > max_ptp):
                 ps_start_i += 1
                 ps_end_i += 1
@@ -398,7 +401,7 @@ def minimise_mean_deviation_power_states(watts,
         for look_ahead_i in range(ps_end_i+1, ps_end_i+look_ahead):
             ahead = watts[ps_end_i:look_ahead_i]
             # TODO: don't recalculate ahead.mean() from scratch every iteration
-            deviation = np.fabs(ahead.mean() - ps_mean)
+            deviation = math.fabs(ahead.mean() - ps_mean)
             if deviation <= min_deviation:
                 min_deviation = deviation
                 i_of_lowest = look_ahead_i
@@ -414,3 +417,40 @@ def minimise_mean_deviation_power_states(watts,
             ps_end_i = ps_start_i + initial_window_size
 
     return power_states
+
+
+def cluster_power_states(signature_power_states):
+    """
+    Args:
+      * signature_power_states (list of :class:`Features`; each with a 
+        ``start``, ``end``, ``mean``, ``var``, ``size``)
+
+    Returns:
+      ``unique_power_states``, ``power_state_attribution``
+      * ``unique_power_states`` is a list of unique :class:`PowerState`s
+      * ``power_state_map`` maps sections of the signature to PowerStates. It is
+        a list of :class:`Feature`s.  Each of these Features contains
+        * ``start`` and 
+        * ``end`` index into the signature vector.  And a
+        * ``power_state`` index into ``unique_power_states``.
+    """
+
+    unique_power_states = []
+    for sps in signature_power_states:
+        match_found = False
+        for ups_i, ups in enumerate(unique_power_states):
+            if spstats.same_mean(sps, ups): 
+                mean_ups = spstats.rough_mean_of_two_normals(sps, ups)
+                print("\n\nmerging:")
+                print(sps, "\n")
+                print(ups, "\n")
+                print(mean_ups)
+
+                unique_power_states[ups_i] = PowerState(mean_ups)
+                match_found = True
+                break
+        if not match_found:
+            new_ps = PowerState(signature_power_state=sps)
+            unique_power_states.append(new_ps)
+
+    return unique_power_states
