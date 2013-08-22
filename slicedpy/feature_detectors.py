@@ -347,32 +347,11 @@ def minimise_mean_deviation_power_states(watts,
     ps_start_i = 0
     ps_end_i = initial_window_size
     power_states = []
-    quarter_window = int(initial_window_size / 4)
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
         if ps_end_i >= n:
             break
-
-        # start_i = ps_start_i
-        # end_i = ps_end_i
-        # ps = watts[start_i:end_i]
-
-        # if ps_end_i == ps_start_i + initial_window_size:
-        #     # Tweak start and end to minimise skew
-        #     min_skew = np.finfo(float).max
-        #     start_i = None
-        #     end_i = None
-        #     for start_i in range(ps_start_i, ps_start_i+quarter_window):
-        #         for end_i in range(ps_end_i-quarter_window, ps_end_i):
-        #             ps = watts[start_i:end_i]
-        #             skew = np.fabs(stats.skew(ps))
-        #             if skew < min_skew:
-        #                 min_skew = skew
-        #                 start_i = start_i
-        #                 end_i = end_i
-        #     ps_start_i = start_i
-        #     ps_end_i = end_i
 
         # this is an initial chunk so test it's a sane
         # chunk by comparing the means of the left and right side
