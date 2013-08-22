@@ -220,7 +220,7 @@ def relative_deviation_steady_states(
 
 def min_max_steady_states(watts,
                           max_deviation=20, # watts
-                          initial_window_size=20, # int: number of samples
+                          initial_window_size=30, # int: number of samples
                           look_ahead=3, # int: number of samples
                           max_ptp=1000 # max peak to peak in watts
                           ):
@@ -255,8 +255,10 @@ def min_max_steady_states(watts,
             tail_split = ss_end_i-initial_window_size
             front = watts[ss_start_i:tail_split]
             tail = watts[tail_split:ss_end_i]
-            end_of_ss = (front.mean() < tail.min() - max_deviation or
-                         front.mean() > tail.max() + max_deviation)
+            if (front.mean() < tail.min() - max_deviation or
+                front.mean() > tail.max() + max_deviation):
+                end_of_ss = True
+                ss_end_i = tail_split
 
         ahead = watts[ss_end_i:ss_end_i+look_ahead]
         if (ahead.mean() < ss.min() - max_deviation or
@@ -327,5 +329,83 @@ def mean_chunk_steady_states(watts, max_deviation=10, window_size=10):
             feature = Feature(start=ss_start_i, end=ss_end_i, mean=ss.mean())
             steady_states.append(feature)
             ss_start_i = ss_end_i
+
+    return steady_states
+
+
+def minimise_mean_deviation_steady_states(watts,
+                                          max_deviation=20, # watts
+                                          initial_window_size=30, # int: number of samples
+                                          look_ahead=150, # int: number of samples
+                                          max_ptp=1000 # max peak-to-peak watts
+                                      ):
+    ss_start_i = 0
+    ss_end_i = initial_window_size
+    steady_states = []
+    quarter_window = int(initial_window_size / 4)
+    half_window = int(initial_window_size / 2)
+    n = watts.size - look_ahead
+    while True:
+        if ss_end_i >= n:
+            break
+
+        # start_i = ss_start_i
+        # end_i = ss_end_i
+        # ss = watts[start_i:end_i]
+
+        # if ss_end_i == ss_start_i + initial_window_size:
+        #     # Tweak start and end to minimise skew
+        #     min_skew = np.finfo(float).max
+        #     start_i = None
+        #     end_i = None
+        #     for start_i in range(ss_start_i, ss_start_i+quarter_window):
+        #         for end_i in range(ss_end_i-quarter_window, ss_end_i):
+        #             ss = watts[start_i:end_i]
+        #             skew = np.fabs(stats.skew(ss))
+        #             if skew < min_skew:
+        #                 min_skew = skew
+        #                 start_i = start_i
+        #                 end_i = end_i
+        #     ss_start_i = start_i
+        #     ss_end_i = end_i
+
+        # this is an initial chunk so test it's a sane
+        # chunk by comparing the means of the left and right side
+        # of this chunk
+        ss = watts[ss_start_i:ss_end_i]
+        if ss_end_i == ss_start_i + initial_window_size:
+            halfway = ss_start_i + half_window
+            left = watts[ss_start_i:halfway]
+            right = watts[halfway:ss_end_i]
+            if (np.fabs(left.min() - right.min()) > max_deviation or
+                np.fabs(left.max() - right.max()) > max_deviation or
+                ss.ptp() > max_ptp):
+                ss_start_i += 1
+                ss_end_i += 1
+                continue
+
+        # Now creep forwards from ss_end_i and find the index which
+        # gives the lowest deviation of the mean of the steady state
+        # against the mean of the look ahead chunk.
+        min_deviation = np.finfo(np.float64).max
+        i_of_lowest = None
+        ss_mean = ss.mean()
+        for look_ahead_i in range(ss_end_i+1, ss_end_i+look_ahead):
+            ahead = watts[ss_end_i:look_ahead_i]
+            # TODO: don't recalculate ahead.mean() from scratch every iteration
+            deviation = np.fabs(ahead.mean() - ss_mean)
+            if deviation <= min_deviation:
+                min_deviation = deviation
+                i_of_lowest = look_ahead_i
+
+        # Now we've found the index of the minimum deviation
+        if min_deviation <= max_deviation:
+            ss_end_i = i_of_lowest
+        else:
+            # End of steady state
+            feature = Feature(start=ss_start_i, end=ss_end_i-1, mean=ss.mean())
+            steady_states.append(feature)
+            ss_start_i = ss_end_i
+            ss_end_i = ss_start_i + initial_window_size
 
     return steady_states
