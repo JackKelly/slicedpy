@@ -148,7 +148,7 @@ def spike_indices(data, min_spike_size, max_spike_size=None):
 
 
 def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
-                            decay_window=10, mode='linear'):
+                     decay_window=10, mode='linear'):
 
     def linear(f, x, values):
         (f.slope, _, f.r_value, 

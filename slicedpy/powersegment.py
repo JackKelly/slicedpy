@@ -29,3 +29,5 @@ class PowerSegment(Feature, PowerState):
             self.mean = watts.mean()
 
 
+    def add_spike_then_decay(self, stds):
+        pass
