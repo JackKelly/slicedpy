@@ -64,16 +64,16 @@ class TestStats(unittest.TestCase):
         rvs1, rvs2 = two_samples_from_different_distribtions()
         _test_welch_ttest(rvs1, rvs2)
 
-    def test_same_mean(self):
+    def test_similar_mean(self):
         rvs1, rvs2 = two_samples_from_same_distribtion()
         b1 = array_to_bunch(rvs1)
         b2 = array_to_bunch(rvs2)
-        self.assertTrue(spstats.same_mean(b1, b2))
+        self.assertTrue(spstats.similar_mean(b1, b2))
 
         rvs1, rvs2 = two_samples_from_different_distribtions()
         b1 = array_to_bunch(rvs1)
         b2 = array_to_bunch(rvs2)
-        self.assertFalse(spstats.same_mean(b1, b2))
+        self.assertFalse(spstats.similar_mean(b1, b2))
 
     def test_rough_mean_of_two_normals(self):
         def _test_mean_of_two_normals(rvs1, rvs2):

@@ -22,6 +22,10 @@ class Feature(Bunch):
         self.end = end
         super(Feature, self).__init__(**kwds)
 
+    @property
+    def size(self):
+        return self.end - self.start
+
     def ttest_both_halves(self, data):
         """
         Test if the left and right half of the data masked by this 

@@ -48,7 +48,12 @@ def welch_ttest(b1, b2):
     return two_tailed_p_value
 
 
-def same_mean(b1, b2, p_value_threshold=0.1, mean_delta_threshold=5):
+def similar_mean(b1, b2, p_value_threshold=0.1, mean_delta_threshold=5):
+    """
+    Args
+      * b1, b2: Bunches describing normal distributions, each with fields 
+        ``mean``, ``var``, ``size``
+    """
     return (math.fabs(b1.mean - b2.mean) < mean_delta_threshold or
             welch_ttest(b1, b2) > p_value_threshold)
 
