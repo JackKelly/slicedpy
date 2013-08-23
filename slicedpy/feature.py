@@ -1,9 +1,7 @@
 from __future__ import print_function, division
 import matplotlib.dates as mdates
 import scipy.stats as stats
-import numpy as np
 from bunch import Bunch
-
 
 class Feature(Bunch):
     """All feature detectors output a list of :class:`Feature` objects.
@@ -61,4 +59,3 @@ class Feature(Bunch):
         x = mdates.date2num(ss.index) * mdates.SEC_PER_DAY
         (self.slope, _, self.r_value, 
          self.p_value, self.stderr) = stats.linregress(x, ss.values)
-

@@ -6,6 +6,7 @@ from scipy import stats
 import scipy.optimize
 import matplotlib.dates as mdates
 import math
+from powersegment import PowerSegment
 
 """
 .. module:: feature_detectors
@@ -180,22 +181,9 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
     return features
 
 
-###############################################################################
-"""
-POWER SEGMENT DETECTORS
-=======================
-
-Naming convention:
-
-  * a ``power segment`` is the feature we search for
-    in appliance signatures.  It has start and end information.  A washing
-    machine might have many power segments.
-
-  * a ``power state`` is an abstraction of a power segment.  A washing machine
-    might have three power states: washing, heating, spinning.
-
-"""
-
+#############################################################################
+# POWER SEGMENT DETECTORS
+#############################################################################
 
 def relative_deviation_power_sgmnts(
                   watts,
@@ -234,8 +222,9 @@ def relative_deviation_power_sgmnts(
         if mean_relative_deviation(next_chunk, ps.mean()) > rdt:
             # new chunk marks the end of the power segment
             if (ps_end_i - ps_start_i) / window_size > 1:
-                feature = Feature(start=ps_start_i, end=ps_end_i, mean=ps.mean())
-                power_sgmnts.append(feature)
+                power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
+                                           watts=ps)
+                power_sgmnts.append(power_sgmnt)
             ps_start_i = ps_end_i
         ps_end_i = next_chunk_end_i
 
@@ -304,15 +293,16 @@ def min_max_power_sgmnts(watts, max_deviation=20, initial_window_size=30,
                 front.mean() > tail.max() + max_deviation):
                 end_of_ps = True
                 ps_end_i = tail_split
+                ps = front
 
         ahead = watts[ps_end_i:ps_end_i+look_ahead]
         if (ahead.mean() < ps.min() - max_deviation or
             ahead.mean() > ps.max() + max_deviation or
             end_of_ps):
             # We've come to the end of a candidate power segment
-            feature = Feature(start=ps_start_i, end=ps_end_i-1,
-                              mean=ps.mean(), var=ps.var())
-            power_sgmnts.append(feature)
+            power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i,
+                                       watts=ps)
+            power_sgmnts.append(power_sgmnt)
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
@@ -349,9 +339,9 @@ def min_max_two_halves_power_sgmnts(watts,
                 ps_end_i += 1
             else:
                 # We've come to the end of a candidate power segment
-                feature = Feature(start=ps_start_i, end=ps_end_i-1, 
-                                  mean=ps.mean())
-                power_sgmnts.append(feature)
+                power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
+                                           watts=ps)
+                power_sgmnts.append(power_sgmnt)
                 ps_start_i = ps_end_i
                 ps_end_i = ps_start_i + initial_window_size
         else:
@@ -371,8 +361,9 @@ def mean_chunk_power_sgmnts(watts, max_deviation=10, window_size=10):
         if (next_chunk.mean() > ps.mean() + max_deviation or
             next_chunk.mean() < ps.mean() - max_deviation):
             # We've come to the end of a candidate power segment
-            feature = Feature(start=ps_start_i, end=ps_end_i, mean=ps.mean())
-            power_sgmnts.append(feature)
+            power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
+                                       watts=ps)
+            power_sgmnts.append(power_sgmnt)
             ps_start_i = ps_end_i
 
     return power_sgmnts
@@ -427,8 +418,9 @@ def minimise_mean_deviation_power_sgmnts(watts,
             ps_end_i = i_of_lowest
         else:
             # End of power segment
-            feature = Feature(start=ps_start_i, end=ps_end_i-1, mean=ps.mean())
-            power_sgmnts.append(feature)
+            power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
+                                       watts=ps)
+            power_sgmnts.append(power_sgmnt)
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
 

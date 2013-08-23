@@ -19,7 +19,7 @@ def plot_steady_states(ax, states, index, offset=0,
     line = None
     for ss in states:
         start = index[ss.start]
-        end = index[ss.end]
+        end = index[ss.end-1]
         mean = ss.mean + offset
         line, = ax.plot([start, end], [mean, mean], color=color, 
                      linewidth=2, alpha=0.6)
