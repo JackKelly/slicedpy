@@ -8,10 +8,13 @@ import matplotlib.dates as mdates
 import math
 
 """
-This file implements feature detectors which are written in pure
-Python.  Cython feature detectors are in
-cython/_cython_feature_detectors.pyx.  This file also holds helper functions
-for pre-processing prior to using feature detectors.
+.. module:: feature_detectors
+   :synopsis: Functions for detecting features in power data.
+
+   This file implements feature detectors which are written in pure
+   Python.  Cython feature detectors are in
+   cython/_cython_feature_detectors.pyx.  This file also holds helper functions
+   for pre-processing prior to using feature detectors.
 """
 
 ###############################################################################
@@ -176,22 +179,37 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
 
     return features
 
+
 ###############################################################################
-# POWER STATE DETECTORS
-###############################################################################
-def relative_deviation_power_states(
+"""
+POWER SEGMENT DETECTORS
+=======================
+
+Naming convention:
+
+  * a ``power segment`` is the feature we search for
+    in appliance signatures.  It has start and end information.  A washing
+    machine might have many power segments.
+
+  * a ``power state`` is an abstraction of a power segment.  A washing machine
+    might have three power states: washing, heating, spinning.
+
+"""
+
+
+def relative_deviation_power_sgmnts(
                   watts,
                   rdt=0.05, # relative deviation threshold
                   window_size=10):
-    """Power state detector designed to find "power states" in the face of
+    """power segment detector designed to find "power segments" in the face of
     a rapidly oscillating signal (e.g. a washing machine's motor).
 
     Break ``watts`` into chunks, each of size ``window_size``.
     Calculate the mean of the first chunk. Calculate the mean
     deviation of the second chunk against the mean of the first chunk.
     If this deviation is above ``rdt`` then we've left a candidate power
-    state.  If we've been through 2 or more chunks then store this
-    power state.  Repeat.
+    segment.  If we've been through 2 or more chunks then store this
+    power segment.  Repeat.
 
     """
 
@@ -208,28 +226,28 @@ def relative_deviation_power_states(
     print("n_chunks =", n_chunks)
     ps_start_i = 0
     ps_end_i = window_size
-    power_states = []
+    power_sgmnts = []
     for chunk_i in range(n_chunks-2):
         ps = watts[ps_start_i:ps_end_i]
         next_chunk_end_i = (chunk_i+2)*window_size
         next_chunk = watts[ps_end_i:next_chunk_end_i]
         if mean_relative_deviation(next_chunk, ps.mean()) > rdt:
-            # new chunk marks the end of the power state
+            # new chunk marks the end of the power segment
             if (ps_end_i - ps_start_i) / window_size > 1:
                 feature = Feature(start=ps_start_i, end=ps_end_i, mean=ps.mean())
-                power_states.append(feature)
+                power_sgmnts.append(feature)
             ps_start_i = ps_end_i
         ps_end_i = next_chunk_end_i
 
-    return power_states
+    return power_sgmnts
 
 
-def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
+def min_max_power_sgmnts(watts, max_deviation=20, initial_window_size=30,
                          look_ahead=3, max_ptp=1000):
-    """Power state detector which looks for periods with similar min
+    """power segment detector which looks for periods with similar min
     and max values.
 
-    Find "power states" by first taking an initial window of size
+    Find "power segments" by first taking an initial window of size
     ``initial_window_size``.  Check that this window is "sane" by
     splitting it in half and comparing the min and max of the two
     halves.  If this window is sane then take the average of
@@ -239,7 +257,7 @@ def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
     repeat.  Also take the tail of the window and check that the mean
     of the front of the window falls within ``max_deviation`` of the
     min and max of the tail (this helps to make sure we end the power
-    state early enough in a situation where we go from a section with a 
+    segment early enough in a situation where we go from a section with a 
     large min and max to a section with a similar mean but smaller min
     and max).
 
@@ -253,7 +271,7 @@ def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
 
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_states = []
+    power_sgmnts = []
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
@@ -277,7 +295,7 @@ def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
                 continue
         else:
             # Take an ``initial_window_size`` chunk from the tail
-            # and make sure the mean of the front of the power state
+            # and make sure the mean of the front of the power segment
             # falls within max_deviation of the min and max of the tail.
             tail_split = ps_end_i-initial_window_size
             front = watts[ps_start_i:tail_split]
@@ -291,26 +309,26 @@ def min_max_power_states(watts, max_deviation=20, initial_window_size=30,
         if (ahead.mean() < ps.min() - max_deviation or
             ahead.mean() > ps.max() + max_deviation or
             end_of_ps):
-            # We've come to the end of a candidate power state
+            # We've come to the end of a candidate power segment
             feature = Feature(start=ps_start_i, end=ps_end_i-1,
                               mean=ps.mean(), var=ps.var())
-            power_states.append(feature)
+            power_sgmnts.append(feature)
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
             ps_end_i += look_ahead
 
-    return power_states
+    return power_sgmnts
 
 
-def min_max_two_halves_power_states(watts, 
+def min_max_two_halves_power_sgmnts(watts, 
                                     max_deviation=20, # watts
                                     initial_window_size=20, # int: n samples
                                     max_ptp=1000 # max peak to peak in watts
                                     ):
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_states = []
+    power_sgmnts = []
     while True:
         if ps_end_i >= watts.size:
             break
@@ -330,21 +348,21 @@ def min_max_two_halves_power_states(watts,
                 ps_start_i += 1
                 ps_end_i += 1
             else:
-                # We've come to the end of a candidate power state
+                # We've come to the end of a candidate power segment
                 feature = Feature(start=ps_start_i, end=ps_end_i-1, 
                                   mean=ps.mean())
-                power_states.append(feature)
+                power_sgmnts.append(feature)
                 ps_start_i = ps_end_i
                 ps_end_i = ps_start_i + initial_window_size
         else:
             ps_end_i += 1
 
-    return power_states
+    return power_sgmnts
 
 
-def mean_chunk_power_states(watts, max_deviation=10, window_size=10):
+def mean_chunk_power_sgmnts(watts, max_deviation=10, window_size=10):
     ps_start_i = 0
-    power_states = []
+    power_sgmnts = []
     n_chunks = int(watts.size / window_size)
     for chunk_i in range(1,n_chunks-2):
         ps_end_i = window_size * chunk_i
@@ -352,15 +370,15 @@ def mean_chunk_power_states(watts, max_deviation=10, window_size=10):
         next_chunk = watts[ps_end_i:ps_end_i+window_size]
         if (next_chunk.mean() > ps.mean() + max_deviation or
             next_chunk.mean() < ps.mean() - max_deviation):
-            # We've come to the end of a candidate power state
+            # We've come to the end of a candidate power segment
             feature = Feature(start=ps_start_i, end=ps_end_i, mean=ps.mean())
-            power_states.append(feature)
+            power_sgmnts.append(feature)
             ps_start_i = ps_end_i
 
-    return power_states
+    return power_sgmnts
 
 
-def minimise_mean_deviation_power_states(watts,
+def minimise_mean_deviation_power_sgmnts(watts,
                                          max_deviation=20, # watts
                                          initial_window_size=30, # int: number of samples
                                          look_ahead=150, # int: number of samples
@@ -368,7 +386,7 @@ def minimise_mean_deviation_power_states(watts,
                                          ):
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_states = []
+    power_sgmnts = []
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
@@ -391,7 +409,7 @@ def minimise_mean_deviation_power_states(watts,
                 continue
 
         # Now creep forwards from ps_end_i and find the index which
-        # gives the lowest deviation of the mean of the power state
+        # gives the lowest deviation of the mean of the power segment
         # against the mean of the look ahead chunk.
         min_deviation = np.finfo(np.float64).max
         i_of_lowest = None
@@ -408,10 +426,10 @@ def minimise_mean_deviation_power_states(watts,
         if min_deviation <= max_deviation:
             ps_end_i = i_of_lowest
         else:
-            # End of power state
+            # End of power segment
             feature = Feature(start=ps_start_i, end=ps_end_i-1, mean=ps.mean())
-            power_states.append(feature)
+            power_sgmnts.append(feature)
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
 
-    return power_states
+    return power_sgmnts
