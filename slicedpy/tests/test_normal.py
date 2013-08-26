@@ -18,13 +18,10 @@
 
 from __future__ import print_function, division
 import unittest
-import slicedpy.stats as spstats
+from slicedpy.normal import Normal
 import scipy.stats as stats
 from slicedpy.bunch import Bunch
 import numpy as np
-
-def array_to_bunch(arr):
-    return Bunch(mean=arr.mean(), var=arr.var(ddof=1), size=arr.size)
 
 def two_samples_from_same_distribtion():
     # stats.norm.rvs(loc=5,scale=10,size=10)
@@ -53,9 +50,9 @@ class TestStats(unittest.TestCase):
 
     def test_welch_ttest(self):
         def _test_welch_ttest(rvs1, rvs2):
-            b1 = array_to_bunch(rvs1)
-            b2 = array_to_bunch(rvs2)
-            wtt = spstats.welch_ttest(b1, b2)
+            norm1 = Normal(values=rvs1)
+            norm2 = Normal(values=rvs2)
+            wtt = norm1.welch_ttest(norm2)
             stt = stats.ttest_ind(rvs1, rvs2, equal_var=False)[1]
             self.assertAlmostEqual(wtt, stt)
 
@@ -66,24 +63,24 @@ class TestStats(unittest.TestCase):
 
     def test_similar_mean(self):
         rvs1, rvs2 = two_samples_from_same_distribtion()
-        b1 = array_to_bunch(rvs1)
-        b2 = array_to_bunch(rvs2)
-        self.assertTrue(spstats.similar_mean(b1, b2))
+        norm1 = Normal(values=rvs1)
+        norm2 = Normal(values=rvs2)
+        self.assertTrue(norm1.similar_mean(norm2))
 
         rvs1, rvs2 = two_samples_from_different_distribtions()
-        b1 = array_to_bunch(rvs1)
-        b2 = array_to_bunch(rvs2)
-        self.assertFalse(spstats.similar_mean(b1, b2))
+        norm1 = Normal(values=rvs1)
+        norm2 = Normal(values=rvs2)
+        self.assertFalse(norm1.similar_mean(norm2))
 
     def test_rough_mean_of_two_normals(self):
         def _test_mean_of_two_normals(rvs1, rvs2):
             rvs3 = np.concatenate([rvs1, rvs2])
-            b1 = array_to_bunch(rvs1)
-            b2 = array_to_bunch(rvs2)
-            new_b = spstats.rough_mean_of_two_normals(b1, b2)
-            self.assertEqual(new_b.size, rvs3.size)
-            self.assertAlmostEqual(new_b.mean, rvs3.mean())
-            self.assertEqual(round(new_b.var), round(rvs3.var()))
+            norm1 = Normal(values=rvs1)
+            norm2 = Normal(values=rvs2)
+            norm3 = norm1.rough_mean_of_two_normals(norm2)
+            self.assertEqual(norm3.size, rvs3.size)
+            self.assertAlmostEqual(norm3.mean, rvs3.mean())
+            self.assertEqual(round(norm3.var), round(rvs3.var()))
 
         rvs1, rvs2 = two_samples_from_same_distribtion()
         _test_mean_of_two_normals(rvs1, rvs2)
