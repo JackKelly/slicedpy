@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 from bunch import Bunch
 import copy
-import slicedpy.stats as spstats
+from slicedpy.normal import Normal
 
 
 class PowerState(Bunch):
@@ -9,12 +9,17 @@ class PowerState(Bunch):
     A washing machine might have three power states: washing, heating,
     spinning.  PowerStates, unlike PowerSegments, do not have a start
     or an end.
+
+    Attributes:
+      * features: a dict of Normals, usually including: 
+        {duration: Normal(), # seconds
+         power: Normal(), # watts
+         ramp: None or Normal(),
+         spike_histogram: [Normal, Normal, Normal, Normal, Normal]
+        }
     """
-    def __init__(self, signature_power_state=None, **kwds):
-        if signature_power_state is not None:
-            self.mean = signature_power_state.mean
-            self.size = signature_power_state.size
-            self.var = signature_power_state.var
+    def __init__(self, **kwds):
+        self.features = {}
         super(PowerState, self).__init__(**kwds)
 
 
@@ -48,7 +53,7 @@ def merge_pwr_sgmnts(signature_pwr_segments):
                 mapped_sig_pwr_sgmnts[sps_i].power_state = ups_i
                 break
         if not match_found:
-            new_ps = PowerState(signature_power_state=sps)
+            new_ps = PowerState(sig_power_segment=sps)
             unique_pwr_states.append(new_ps)
             mapped_sig_pwr_sgmnts[sps_i].power_state = len(unique_pwr_states)-1
 

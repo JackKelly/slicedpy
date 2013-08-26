@@ -20,13 +20,12 @@ class PowerSegment(Feature, PowerState):
           * watts (np.ndarray): Power data for this power segment. 
             ``watts.size`` must equal ``end - start``.
         """
-        super(PowerSegment, self).__init__(**kwds)
-        if watts is not None:
-            if watts.size != self.size:
-                raise ValueError('watts must only contain data for'
-                                 ' this power segment!')
-            self.var = watts.var()
-            self.mean = watts.mean()
+        if watts is not None and watts.size != self.size:
+            raise ValueError('watts must only contain data for'
+                             ' this power segment!')
+
+        super(PowerSegment, self).__init__(values=watts, **kwds)
+        PowerState.__init__(self)
 
 
     def add_spike_then_decay(self, stds):

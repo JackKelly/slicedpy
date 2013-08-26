@@ -23,7 +23,8 @@ class Normal(Bunch):
             self.size = values.size
             self.var = values.var(ddof=1)
             self.mean = values.mean()
-
+            self.min = values.min()
+            self.max = values.max()
 
     def welch_ttest(self, other):
 
