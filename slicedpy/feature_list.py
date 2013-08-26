@@ -2,7 +2,7 @@ from __future__ import division, print_function
 import numpy as np
 
 class FeatureList(list):
-    """Container for :class:`Feature`s (or any class with ``start`` and ``end``
+    """Container for :class:`Feature`s (or any class with ``start`` and ``end``)
     """
 
     def find_nearest(self, target_ts_index, align='start'):
@@ -17,9 +17,15 @@ class FeatureList(list):
           to target_ts_index.
           If FeatureList is empty then return None.
           If FeatureList has only one item then 0.
+
+        Raises:
+          AttributeError if we encounter a list item without a 
+            ``start`` or ``end``.
         """
 
         assert(align in ['start', 'end'])
+        if target_ts_index < 0:
+            raise IndexError('target_ts_index must be positive.')
 
         list_length = len(self)
         if list_length == 0:
@@ -31,8 +37,11 @@ class FeatureList(list):
         get_end_ts_index = lambda i: self[i].end
         get_ts_index = get_start_ts_index if align=='start' else get_end_ts_index
 
-        best_list_index = int(round((target_ts_index / get_ts_index[-1]) * 
+        best_list_index = int(round((target_ts_index / get_ts_index(-1)) * 
                                      list_length))
+
+        if best_list_index >= list_length:
+            best_list_index = list_length - 1
 
         get_diff = lambda i: abs(get_ts_index(i) - target_ts_index)
 
