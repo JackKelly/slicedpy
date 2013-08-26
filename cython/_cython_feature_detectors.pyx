@@ -24,7 +24,8 @@ from __future__ import print_function, division
 import numpy as np
 cimport numpy as np
 import pandas as pd
-from slicedpy.feature import Feature
+from slicedpy.feature_list import FeatureList
+from slicedpy.powersegment import PowerSegment
 
 # Data types for timestamps (TS = TimeStamp)
 TS_DTYPE = np.uint64
@@ -62,8 +63,7 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
             steady state. Hart used 15.
     
     Returns:
-        List of Features.  Each Feature has a 'watts' attribute which gives the
-            mean watts for that steady state.
+        FeatureList of PowerSegments.
     """
 
     _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
@@ -73,7 +73,7 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
         PW_DTYPE_t p, ss_max, ss_min # steady state max and mins
 
     n = len(watts)
-    ss = [] # steady states. What we return
+    ss = FeatureList() # steady states. What we return
     ss_start_i = 0
     ss_min = ss_max = watts[ss_start_i]
 
@@ -87,16 +87,16 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
 
         if (ss_max - ss_min) > max_range: # Just left a candidate steady state.
             if (i - ss_start_i) >= min_n_samples:
-                feature = Feature(start=ss_start_i, end=i, 
-                                  mean=watts[ss_start_i:i].mean())
-                ss.append(feature)
+                ps = PowerSegment(start=ss_start_i, end=i, 
+                                  watts=watts[ss_start_i:i])
+                ss.append(ps)
             ss_start_i = i
             ss_min = ss_max = watts[ss_start_i]
 
     if (i - ss_start_i) >= min_n_samples:
-        feature = Feature(start=ss_start_i, end=i, 
-                          mean=watts[ss_start_i:i].mean())
-        ss.append(feature)
+        ps = PowerSegment(start=ss_start_i, end=i, 
+                          watts=watts[ss_start_i:i])
+        ss.append(ps)
             
     return ss
 
@@ -115,8 +115,7 @@ def mean_steady_states(
             consecutive samples per steady state. Hart used 3.
         max_range (float): Optional. 
     Returns:
-        List of Features. Each Feature has a 'watts' attribute which gives the
-            mean watts for that steady state.
+        FeatureList of PowerSegments.
     """
 
     _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
@@ -126,7 +125,7 @@ def mean_steady_states(
         PW_DTYPE_t p, ss_mean, accumulator # steady state max and mins
 
     n = len(watts)
-    ss = [] # list of steady states. What we return
+    ss = FeatureList() # list of steady states. What we return
     ss_start_i = 0
     accumulator = ss_mean = watts[ss_start_i]
 
@@ -136,9 +135,9 @@ def mean_steady_states(
         ss_length = i - ss_start_i
         if delta > max_range: # Just left a candidate steady state.
             if ss_length >= min_n_samples:
-                feature = Feature(start=ss_start_i, end=i,
-                                  mean=ss_mean)
-                ss.append(feature)
+                ps = PowerSegment(start=ss_start_i, end=i,
+                                  watts=watts[ss_start_i:i])
+                ss.append(ps)
             ss_start_i = i
             accumulator = ss_mean = watts[ss_start_i]
         else:
@@ -146,9 +145,9 @@ def mean_steady_states(
             ss_mean = accumulator / (ss_length + 1)
 
     if (i - ss_start_i) >= min_n_samples:
-        feature = Feature(start=ss_start_i, end=i,
-                          mean=watts[ss_start_i:i].mean())
-        ss.append(feature)
+        ps = PowerSegment(start=ss_start_i, end=i,
+                          watts=watts[ss_start_i:i])
+        ss.append(ps)
             
     return ss
 
@@ -170,8 +169,7 @@ def sliding_mean_steady_states(
         window_size (int): number of samples
     
     Returns:
-        List of Features.  Each Feature has a 'watts' attribute which gives the
-            mean watts for that steady state.
+        FeatureList of PowerSegments.
     """
 
     _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
@@ -181,7 +179,7 @@ def sliding_mean_steady_states(
         PW_DTYPE_t p, ss_mean, accumulator, delta # steady state max and mins
 
     n = len(watts)
-    ss = [] # list of steady states. What we return
+    ss = FeatureList() # list of steady states. What we return
     ss_start_i = 0
     accumulator = ss_mean = watts[ss_start_i]
 
@@ -191,9 +189,9 @@ def sliding_mean_steady_states(
         ss_length = i - ss_start_i
         if delta > max_range: # Just left a candidate steady state.
             if ss_length >= min_n_samples:
-                feature = Feature(start=ss_start_i, end=i, 
-                                  mean=watts[ss_start_i:i].mean())
-                ss.append(feature)
+                ps = PowerSegment(start=ss_start_i, end=i, 
+                                       watts=watts[ss_start_i:i])
+                ss.append(ps)
             ss_start_i = i
             accumulator = ss_mean = watts[ss_start_i]
         else:
@@ -205,8 +203,8 @@ def sliding_mean_steady_states(
                 ss_mean = accumulator / (ss_length + 1)
 
     if (i - ss_start_i) >= min_n_samples:
-        feature = Feature(start=ss_start_i, end=i, 
-                          mean=watts[ss_start_i:i].mean())
-        ss.append(feature)
+        ps = PowerSegment(start=ss_start_i, end=i, 
+                          watts=watts[ss_start_i:i])
+        ss.append(ps)
             
     return ss

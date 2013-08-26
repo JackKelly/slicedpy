@@ -7,6 +7,7 @@ import scipy.optimize
 import matplotlib.dates as mdates
 import math
 from powersegment import PowerSegment
+from feature_list import FeatureList
 
 """
 .. module:: feature_detectors
@@ -149,7 +150,10 @@ def spike_indices(data, min_spike_size, max_spike_size=None):
 
 def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
                      decay_window=10, mode='linear'):
-
+    """
+    Returns:
+        FeatureList of Features.
+    """
     def linear(f, x, values):
         (f.slope, _, f.r_value, 
          f.p_value, f.stderr) = stats.linregress(x, values)
@@ -170,7 +174,7 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
                                min_spike_size, max_spike_size)
 
     # For each spike, do linear regression of next decay_window values
-    features = []
+    features = FeatureList()
     for spike_i in spike_idxs:
         f = Feature(start=spike_i, end=spike_i+decay_window)
         chunk = series[f.start:f.end]
@@ -214,7 +218,7 @@ def relative_deviation_power_sgmnts(
     print("n_chunks =", n_chunks)
     ps_start_i = 0
     ps_end_i = window_size
-    power_sgmnts = []
+    power_sgmnts = FeatureList()
     for chunk_i in range(n_chunks-2):
         ps = watts[ps_start_i:ps_end_i]
         next_chunk_end_i = (chunk_i+2)*window_size
@@ -260,7 +264,7 @@ def min_max_power_sgmnts(watts, max_deviation=20, initial_window_size=30,
 
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_sgmnts = []
+    power_sgmnts = FeatureList()
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
@@ -318,7 +322,7 @@ def min_max_two_halves_power_sgmnts(watts,
                                     ):
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_sgmnts = []
+    power_sgmnts = FeatureList()
     while True:
         if ps_end_i >= watts.size:
             break
@@ -352,7 +356,7 @@ def min_max_two_halves_power_sgmnts(watts,
 
 def mean_chunk_power_sgmnts(watts, max_deviation=10, window_size=10):
     ps_start_i = 0
-    power_sgmnts = []
+    power_sgmnts = FeatureList()
     n_chunks = int(watts.size / window_size)
     for chunk_i in range(1,n_chunks-2):
         ps_end_i = window_size * chunk_i
@@ -377,7 +381,7 @@ def minimise_mean_deviation_power_sgmnts(watts,
                                          ):
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_sgmnts = []
+    power_sgmnts = FeatureList()
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
