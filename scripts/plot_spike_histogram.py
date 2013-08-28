@@ -9,7 +9,7 @@ import matplotlib.dates as mdates
 import numpy as np
 from sklearn.cluster import DBSCAN
 
-WINDOW_SIZE = 60
+WINDOW_DURATION = 'T'
 MERGE_SPIKES = True
 N_BINS = 8
 ROW_I = 5 # which spike histogram row (bin) index to use in clustering?
@@ -21,12 +21,9 @@ subplots, chan = init_aggregate_and_appliance_dataset_figure(
 # High freq detector
 # SPIKE HISTOGRAM
 
-fdiff = np.diff(chan.series.values)
-
-if MERGE_SPIKES:
-    fdiff = fd.merge_spikes(fdiff)
-
-spike_histogram, bin_edges = fd.spike_histogram(fdiff, window_size=WINDOW_SIZE, 
+spike_histogram, bin_edges = fd.spike_histogram(chan.series, 
+                                                merge_spikes=MERGE_SPIKES,
+                                                window_duration=WINDOW_DURATION, 
                                                 n_bins=N_BINS)
 
 # get ordinal representations of start and end date times
@@ -49,7 +46,8 @@ db = DBSCAN(eps=10, min_samples=6).fit(X)
 
 # calculate some constants to help convert from indicies to 
 # ordinal datetimes
-n_chunks = int(fdiff.size / WINDOW_SIZE)
+s_duration = (chan.series.index[-1] - chan.series.index[0]).total_seconds()
+n_chunks = int(s_duration / WINDOW_DURATION)
 num_time_range = num_end_time - num_start_time
 num_per_item = num_time_range / n_chunks
 row_label = ('row index={}, bin edges={:.0f}-{:.0f}W'

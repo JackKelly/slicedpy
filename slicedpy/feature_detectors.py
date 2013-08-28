@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 from _cython_feature_detectors import *
 import numpy as np
+import pandas as pd
 import copy
 from scipy import stats
 import scipy.optimize
@@ -8,6 +9,7 @@ import matplotlib.dates as mdates
 import math
 from feature_list import FeatureList
 from slicedpy.normal import Normal
+from pda.channel import _indicies_of_periods
 
 """
 .. module:: feature_detectors
@@ -23,7 +25,7 @@ from slicedpy.normal import Normal
 # SPIKE HISTOGRAM FUNCTIONS
 ###############################################################################
 
-def merge_spikes(fdiff):
+def get_merged_spikes(fdiff):
     """Merge consecutive forward difference values of the same sign.
 
     Args:
@@ -56,27 +58,42 @@ def merge_spikes(fdiff):
     return merged_fdiff
 
 
-def spike_histogram(fdiff, window_size=60, n_bins=8):
+def get_merged_spikes_pandas(series):
+    return pd.Series(get_merged_spikes(series.values), index=series.index)
+
+
+def spike_histogram(series, merge_spikes=True, window_duration='T', n_bins=8):
     """
     Args:
-        fdiff (np.array): forward difference of power signal calculated by,
-            for example, np.diff().  You may want to merge spikes using
-            merge_spikes() before passing fdiff to spike_histogram().
-        window_size (int): number of samples per window.
-        n_bins (int): number of bins per window.
+        * series (pd.Series): watts
+        * merge_spikes (bool): Default = True
+        * window_duration (str or tuple): Pandas period alias e.g. 'T'.
+        * n_bins (int): number of bins per window.
+
+    Returns:
+        spike_hist, bin_edges:
+            spike_hist (pd.DataFrame):
+                index is pd.DateTimeIndex of start of each time window
+                columns are 2-tuples of the bin edges in watts (int)
+            bin_edges (list of ints):
     """
+    fdiff = series.diff()
+    if merge_spikes:
+        fdiff = get_merged_spikes_pandas(fdiff)        
+
     abs_fdiff = np.fabs(fdiff)
-    n_chunks = int(abs_fdiff.size / window_size)
-    start_i = 0
+    date_range, boundaries = _indicies_of_periods(fdiff.index, 
+                                                  freq=window_duration)
     bin_edges = np.concatenate(([0], np.exp(np.arange(1,n_bins+1))))
-    print("bin edges =", bin_edges)
-    print("n_bins=", n_bins, "n_chunks=", n_chunks)
-    spike_hist = np.empty((n_bins, n_chunks), dtype=np.int64)
-    for chunk_i in range(n_chunks):
-        end_i = (chunk_i+1)*window_size
+    bin_edges = np.round(bin_edges).astype(int)
+    cols = zip(bin_edges[:-1], bin_edges[1:])
+    spike_hist = pd.DataFrame(index=date_range, columns=cols)
+
+    for date_i, date in enumerate(date_range):
+        start_i, end_i = boundaries[date_i]
         chunk = abs_fdiff[start_i:end_i]
-        spike_hist[:,chunk_i] = np.histogram(chunk, bins=bin_edges)[0]
-        start_i = end_i
+        spike_hist.loc[date] = np.histogram(chunk, bins=bin_edges)[0]
+
     return spike_hist, bin_edges
 
 
