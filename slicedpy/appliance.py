@@ -55,7 +55,13 @@ class Appliance(object):
         #   * count_per_run = GMM: number of times this power state is seen per run 
         #   * next_states = {1: {'diff between power states': GMM, 
         #                        'forward diff': GMM, 
+        #                        'time between states^': GMM,
+        #                        'av power used between states^': float,
         #                        'probability': Float}}
+        #
+        # ^ these are used for handling the case where, for example, in the washing machine,
+        # there are some really wild sections which are so wild that they are ignored
+        # by the power segment detector.  But these sections still use power!
         #
         # Also store all raw training data in each PowerState.  This is necessary
         # so that we can re-fit GMMs when new signature examples are provided, or 
