@@ -91,7 +91,9 @@ class Appliance(object):
         Incrementally build up candidate agg_power_states, as the union of all
         power states suggested by each feature extractor:
           1. find all transitions between pwr_sgmnts consistent with transitions
-             seen for this appliance.  Require both +ve and -ve transitions.  
+             seen for this appliance.  Require both +ve and -ve transitions
+             (or maybe just require either / or.  Remember that we want to be 
+             permissive to give the discrete optimisation something to do!)
              Create a list of candidate agg_power_states, with scores and durations.
           2. find all ramps consistent with ramps for this appliance.  
              Add / modify agg_power_states.
