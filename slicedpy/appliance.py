@@ -94,7 +94,8 @@ class Appliance(object):
              seen for this appliance.  Require both +ve and -ve transitions
              (or maybe just require either / or.  Remember that we want to be 
              permissive to give the discrete optimisation something to do!)
-             Create a list of candidate agg_power_states, with scores and durations.
+             Create a list of candidate agg_power_states, with scores, durations and
+             magnitude of power change (to tweak the energy estimation).
           2. find all ramps consistent with ramps for this appliance.  
              Add / modify agg_power_states.
           3. Same with spike histogram.

@@ -6,13 +6,13 @@ from scipy import stats
 import scipy.optimize
 import matplotlib.dates as mdates
 import math
-from powersegment import PowerSegment
 from feature_list import FeatureList
+from slicedpy.normal import Normal
 
 """
 .. module:: feature_detectors
    :synopsis: Functions for detecting features in power data.
-
+ 
    This file implements feature detectors which are written in pure
    Python.  Cython feature detectors are in
    cython/_cython_feature_detectors.pyx.  This file also holds helper functions
@@ -190,13 +190,13 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
 #############################################################################
 
 def relative_deviation_power_sgmnts(
-                  watts,
+                  series,
                   rdt=0.05, # relative deviation threshold
                   window_size=10):
     """power segment detector designed to find "power segments" in the face of
     a rapidly oscillating signal (e.g. a washing machine's motor).
 
-    Break ``watts`` into chunks, each of size ``window_size``.
+    Break ``series`` into chunks, each of size ``window_size``.
     Calculate the mean of the first chunk. Calculate the mean
     deviation of the second chunk against the mean of the first chunk.
     If this deviation is above ``rdt`` then we've left a candidate power
@@ -209,6 +209,8 @@ def relative_deviation_power_sgmnts(
     # * convert code to Cython 
     # * don't calculate ps.mean() from scratch every iteration
 
+    watts = series.values
+
     def mean_relative_deviation(next_chunk, ps_mean):
         """Convert to absolute value _after_ calculating the mean.
         The idea is that rapid oscillations should cancel themselves out."""
@@ -218,7 +220,8 @@ def relative_deviation_power_sgmnts(
     print("n_chunks =", n_chunks)
     ps_start_i = 0
     ps_end_i = window_size
-    power_sgmnts = FeatureList()
+    idx = [] # index for dataframe
+    power_sgmnts = []
     for chunk_i in range(n_chunks-2):
         ps = watts[ps_start_i:ps_end_i]
         next_chunk_end_i = (chunk_i+2)*window_size
@@ -226,16 +229,16 @@ def relative_deviation_power_sgmnts(
         if mean_relative_deviation(next_chunk, ps.mean()) > rdt:
             # new chunk marks the end of the power segment
             if (ps_end_i - ps_start_i) / window_size > 1:
-                power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
-                                           watts=ps)
-                power_sgmnts.append(power_sgmnt)
+                idx.append(series.index[ps_start_i])
+                power_sgmnts.append({'end': series.index[ps_end_i-1],
+                                     'power_stats': Normal(ps)})
             ps_start_i = ps_end_i
         ps_end_i = next_chunk_end_i
 
-    return power_sgmnts
+    return pd.DataFrame(power_sgmnts, index=idx)
 
 
-def min_max_power_sgmnts(watts, max_deviation=20, initial_window_size=30,
+def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
                          look_ahead=3, max_ptp=1000):
     """power segment detector which looks for periods with similar min
     and max values.
@@ -255,16 +258,18 @@ def min_max_power_sgmnts(watts, max_deviation=20, initial_window_size=30,
     and max).
 
     Args:
-      * watts (np.ndarray)
+      * series (pd.Series): watts
       * max_deviation (float): watts
       * initial_window_size (int): number of samples
       * look_ahead (int): number of samples
       * max_ptp (float): max peak to peak in watts
     """
+    watts = series.values
 
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_sgmnts = FeatureList()
+    idx = [] # index for dataframe
+    power_sgmnts = []
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
@@ -304,25 +309,27 @@ def min_max_power_sgmnts(watts, max_deviation=20, initial_window_size=30,
             ahead.mean() > ps.max() + max_deviation or
             end_of_ps):
             # We've come to the end of a candidate power segment
-            power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i,
-                                       watts=ps)
-            power_sgmnts.append(power_sgmnt)
+            idx.append(series.index[ps_start_i])
+            power_sgmnts.append({'end': series.index[ps_end_i-1], 
+                                 'power_stats': Normal(ps)})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
             ps_end_i += look_ahead
 
-    return power_sgmnts
+    return pd.DataFrame(power_sgmnts, index=idx)
 
 
-def min_max_two_halves_power_sgmnts(watts, 
+def min_max_two_halves_power_sgmnts(series, 
                                     max_deviation=20, # watts
                                     initial_window_size=20, # int: n samples
                                     max_ptp=1000 # max peak to peak in watts
                                     ):
+    watts = series.values
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_sgmnts = FeatureList()
+    idx = [] # index for dataframe
+    power_sgmnts = []
     while True:
         if ps_end_i >= watts.size:
             break
@@ -343,20 +350,22 @@ def min_max_two_halves_power_sgmnts(watts,
                 ps_end_i += 1
             else:
                 # We've come to the end of a candidate power segment
-                power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
-                                           watts=ps)
-                power_sgmnts.append(power_sgmnt)
+                idx.append(series.index[ps_start_i])
+                power_sgmnts.append({'end': series.index[ps_end_i-1], 
+                                     'power_stats': Normal(ps)})
                 ps_start_i = ps_end_i
                 ps_end_i = ps_start_i + initial_window_size
         else:
             ps_end_i += 1
 
-    return power_sgmnts
+    return pd.DataFrame(power_sgmnts, index=idx)
 
 
-def mean_chunk_power_sgmnts(watts, max_deviation=10, window_size=10):
+def mean_chunk_power_sgmnts(series, max_deviation=10, window_size=10):
+    watts = series.values
     ps_start_i = 0
-    power_sgmnts = FeatureList()
+    idx = [] # index for dataframe
+    power_sgmnts = []
     n_chunks = int(watts.size / window_size)
     for chunk_i in range(1,n_chunks-2):
         ps_end_i = window_size * chunk_i
@@ -365,23 +374,25 @@ def mean_chunk_power_sgmnts(watts, max_deviation=10, window_size=10):
         if (next_chunk.mean() > ps.mean() + max_deviation or
             next_chunk.mean() < ps.mean() - max_deviation):
             # We've come to the end of a candidate power segment
-            power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
-                                       watts=ps)
-            power_sgmnts.append(power_sgmnt)
+            idx.append(series.index[ps_start_i])
+            power_sgmnts.append({'end': series.index[ps_end_i-1], 
+                                 'power_stats': Normal(ps)})
             ps_start_i = ps_end_i
 
-    return power_sgmnts
+    return pd.DataFrame(power_sgmnts, index=idx)
 
 
-def minimise_mean_deviation_power_sgmnts(watts,
+def minimise_mean_deviation_power_sgmnts(series,
                                          max_deviation=20, # watts
                                          initial_window_size=30, # int: number of samples
                                          look_ahead=150, # int: number of samples
                                          max_ptp=1000 # max peak-to-peak watts
                                          ):
+    watts = series.values
     ps_start_i = 0
     ps_end_i = initial_window_size
-    power_sgmnts = FeatureList()
+    idx = [] # index for dataframe
+    power_sgmnts = []
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
     while True:
@@ -422,10 +433,10 @@ def minimise_mean_deviation_power_sgmnts(watts,
             ps_end_i = i_of_lowest
         else:
             # End of power segment
-            power_sgmnt = PowerSegment(start=ps_start_i, end=ps_end_i, 
-                                       watts=ps)
-            power_sgmnts.append(power_sgmnt)
+            idx.append(series.index[ps_start_i])
+            power_sgmnts.append({'end': series.index[ps_end_i-1],
+                                 'power_stats': Normal(ps)})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
 
-    return power_sgmnts
+    return pd.DataFrame(power_sgmnts, index=idx)

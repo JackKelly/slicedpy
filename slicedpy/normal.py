@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 import math
 import scipy.stats as stats
+import numpy as np
 from slicedpy.bunch import Bunch
 
 class Normal(Bunch):
@@ -20,11 +21,14 @@ class Normal(Bunch):
         """
         super(Normal, self).__init__(**kwds)
         if values is not None:
-            self.size = values.size
-            self.var = values.var(ddof=1)
-            self.mean = values.mean()
-            self.min = values.min()
-            self.max = values.max()
+            if not isinstance(values, np.ndarray):
+                raise TypeError('values must be an np.ndarray')
+            else:
+                self.size = values.size
+                self.var = values.var(ddof=1)
+                self.mean = values.mean()
+                self.min = values.min()
+                self.max = values.max()
 
     def welch_ttest(self, other):
 

@@ -16,28 +16,27 @@ subplots, chan = init_aggregate_and_appliance_dataset_figure(
 
 ########################
 # HART'S STEADY STATES
-if False:
+if True:
     print("Hart's steady states...")
-    steady_states = fd.steady_states(chan.series.values)
-    plot_steady_states(subplots[0], steady_states, chan.series.index, 
-                       color='b', label='Hart')
+    steady_states = fd.steady_states(chan.series)
+    plot_steady_states(subplots[0], steady_states, color='b', label='Hart')
 
 #####################
 # MEAN STEADY STATES
 if True:
     print("Mean steady states...")
-    mean_steady_states = fd.mean_steady_states(chan.series.values,
+    mean_steady_states = fd.mean_steady_states(chan.series,
                                                max_range=15)
-    plot_steady_states(subplots[0], mean_steady_states, chan.series.index,
-                       offset=1, color='g', label='Mean')
+    plot_steady_states(subplots[0], mean_steady_states, offset=1, color='g', 
+                       label='Mean')
 
 #####################
 # SLIDING MEANS STEADY STATES
 if True:
     print("Sliding mean steady states...")
-    sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series.values,
+    sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series,
                                                                max_range=15)
-    plot_steady_states(subplots[0], sliding_mean_steady_states, chan.series.index,
+    plot_steady_states(subplots[0], sliding_mean_steady_states,
                        offset=2, color='y', label='Sliding mean')
 
 ###############################################################################
@@ -48,35 +47,35 @@ if True:
 # RELATIVE DEVIATION POWER SEGMENTS
 if True:
     print("Relative deviation power segments...")
-    relative_deviation_power_segments = fd.relative_deviation_power_sgmnts(chan.series.values)
+    relative_deviation_power_segments = fd.relative_deviation_power_sgmnts(chan.series)
     plot_steady_states(subplots[0], relative_deviation_power_segments, 
-                       chan.series.index, offset=-1, color='c', label='Relative deviation')
+                        offset=-1, color='c', label='Relative deviation')
 
 
 #####################
 # MIN MAX POWER SEGMENTS
 if True:
     print("Min-Max power segments...")
-    min_max_power_segments = fd.min_max_power_sgmnts(chan.series.values)
+    min_max_power_segments = fd.min_max_power_sgmnts(chan.series)
     plot_steady_states(subplots[0], min_max_power_segments, 
-                       chan.series.index, offset=-2, color='r', label='Min Max')
+                        offset=-2, color='r', label='Min Max')
 
 
 #####################
 # MIN MAX CHUNK POWER SEGMENTS
-if True:
+if False:
     print("Mean chunk power segments...")
-    mean_chunk_power_segments = fd.mean_chunk_power_sgmnts(chan.series.values) 
+    mean_chunk_power_segments = fd.mean_chunk_power_sgmnts(chan.series) 
     plot_steady_states(subplots[0], mean_chunk_power_segments, 
-                       chan.series.index, offset=-3, color='orange', label='Mean Chunk')
+                        offset=-3, color='orange', label='Mean Chunk')
 
 #####################
 # MINIMISE MEAN DEVIATION POWER SEGMENTS
 if True:
     print("Minimise mean deviation power segments...")
-    min_mean_dev_power_segments = fd.minimise_mean_deviation_power_sgmnts(chan.series.values) 
+    min_mean_dev_power_segments = fd.minimise_mean_deviation_power_sgmnts(chan.series) 
     plot_steady_states(subplots[0], min_mean_dev_power_segments, 
-                       chan.series.index, offset=-3, color='orange', 
+                        offset=-3, color='orange', 
                        label='Min mean deviation')
 
     # for ss in min_mean_dev_power_segments:

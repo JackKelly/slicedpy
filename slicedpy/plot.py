@@ -2,13 +2,12 @@ import numpy as np
 import pylab as pl
 
 
-def plot_steady_states(ax, states, index, offset=0, 
+def plot_steady_states(ax, states, offset=0, 
                        color='g', label='Steady state'):
     """
     Args:
         ax (Axes)
-        states (list of Features with start, end and mean): Steady States
-        index (Pandas DatetimeIndex)
+        states (pd.DataFrame): Steady States
         offset (int or float): add this to ss.mean
         color (str)
         label (str)
@@ -17,10 +16,9 @@ def plot_steady_states(ax, states, index, offset=0,
         line
     """
     line = None
-    for ss in states:
-        start = index[ss.start]
-        end = index[ss.end-1]
-        mean = ss.mean + offset
+    for start, val in states.iterrows():
+        end = val['end']
+        mean = val['power_stats'].mean + offset
         line, = ax.plot([start, end], [mean, mean], color=color, 
                      linewidth=2, alpha=0.6)
     if line is not None:

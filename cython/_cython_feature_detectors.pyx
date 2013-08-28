@@ -24,8 +24,10 @@ from __future__ import print_function, division
 import numpy as np
 cimport numpy as np
 import pandas as pd
-from slicedpy.feature_list import FeatureList
+from slicedpy.normal import Normal
+
 from slicedpy.powersegment import PowerSegment
+from slicedpy.feature_list import FeatureList
 
 # Data types for timestamps (TS = TimeStamp)
 TS_DTYPE = np.uint64
@@ -48,14 +50,14 @@ def _sanity_check_input_to_steady_state_detectors(
         raise ValueError('Please remove all NaNs!')
 
 
-def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
+def steady_states(series,
                   Py_ssize_t min_n_samples=3, 
                   PW_DTYPE_t max_range=15):
     """Steady_state detector based on the definition of steady states given
     in Hart 1992, page 1882, under the heading 'C. Edge Detection'.
 
     Args:
-        watts (np.ndarray): Watts. Row vector. np.float_32
+        series (pd.Series): Watts. np.float_32
         min_n_samples (int): Optional. Defaults to 3. Minimum number of 
             consecutive samples per steady state.  Hart used 3.
         max_range (float): Optional. Defaults to 15 Watts. Maximum 
@@ -63,17 +65,23 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
             steady state. Hart used 15.
     
     Returns:
-        FeatureList of PowerSegments.
+        pd.DataFrame.  Each row is a steady state.  Columns:
+           * index: datetime of start of steady state
+           * end: datetime of end of steady state
+           * power_stats (slicedpy.Normal): summary stats describing power
     """
 
-    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
-
     cdef:
+        np.ndarray[PW_DTYPE_t, ndim=1] watts
         Py_ssize_t i, n, ss_start_i # steady_state_start_index
         PW_DTYPE_t p, ss_max, ss_min # steady state max and mins
 
+    watts = series.values
+    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
+
     n = len(watts)
-    ss = FeatureList() # steady states. What we return
+    idx = [] # index for dataframe
+    ss = [] # steady states. What we return
     ss_start_i = 0
     ss_min = ss_max = watts[ss_start_i]
 
@@ -87,45 +95,52 @@ def steady_states(np.ndarray[PW_DTYPE_t, ndim=1] watts,
 
         if (ss_max - ss_min) > max_range: # Just left a candidate steady state.
             if (i - ss_start_i) >= min_n_samples:
-                ps = PowerSegment(start=ss_start_i, end=i, 
-                                  watts=watts[ss_start_i:i])
-                ss.append(ps)
+                idx.append(series.index[ss_start_i])
+                ss.append({'end': series.index[i-1],
+                           'power_stats': Normal(watts[ss_start_i:i])})
+
             ss_start_i = i
             ss_min = ss_max = watts[ss_start_i]
 
     if (i - ss_start_i) >= min_n_samples:
-        ps = PowerSegment(start=ss_start_i, end=i, 
-                          watts=watts[ss_start_i:i])
-        ss.append(ps)
+        idx.append(series.index[ss_start_i])
+        ss.append({'end': series.index[i-1],
+                   'power_stats': Normal(watts[ss_start_i:i])})
             
-    return ss
+    return pd.DataFrame(ss, index=idx)
 
 
-def mean_steady_states(
-                  np.ndarray[PW_DTYPE_t, ndim=1] watts,
-                  Py_ssize_t min_n_samples=3,
-                  PW_DTYPE_t max_range=10):
+def mean_steady_states(series,
+                       Py_ssize_t min_n_samples=3,
+                       PW_DTYPE_t max_range=10):
     """Steady_state detector where we calculate the mean of each steady state;
     if the next sample is more than max_range away from the mean then this is
     the end of the steady state.
 
     Args:
-        watts (np.ndarray): Watts. Row vector. np.float_32
+        series (pd.Series): Watts. np.float_32
         min_n_samples (int): Optional. Defaults to 3. Minimum number of
             consecutive samples per steady state. Hart used 3.
         max_range (float): Optional. 
+
     Returns:
-        FeatureList of PowerSegments.
+        pd.DataFrame.  Each row is a steady state.  Columns:
+           * index: datetime of start of steady state
+           * end: datetime of end of steady state
+           * power_stats (slicedpy.Normal): summary stats describing power
     """
 
-    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
-
     cdef:
+        np.ndarray[PW_DTYPE_t, ndim=1] watts
         Py_ssize_t i, n, ss_start_i # steady_state_start_index
         PW_DTYPE_t p, ss_mean, accumulator # steady state max and mins
 
+    watts = series.values
+    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
+
     n = len(watts)
-    ss = FeatureList() # list of steady states. What we return
+    idx = [] # index for dataframe
+    ss = [] # list of steady states. What we return
     ss_start_i = 0
     accumulator = ss_mean = watts[ss_start_i]
 
@@ -135,9 +150,10 @@ def mean_steady_states(
         ss_length = i - ss_start_i
         if delta > max_range: # Just left a candidate steady state.
             if ss_length >= min_n_samples:
-                ps = PowerSegment(start=ss_start_i, end=i,
-                                  watts=watts[ss_start_i:i])
-                ss.append(ps)
+                idx.append(series.index[ss_start_i])
+                ss.append({'end': series.index[i-1],
+                           'power_stats': Normal(watts[ss_start_i:i])})
+
             ss_start_i = i
             accumulator = ss_mean = watts[ss_start_i]
         else:
@@ -145,43 +161,49 @@ def mean_steady_states(
             ss_mean = accumulator / (ss_length + 1)
 
     if (i - ss_start_i) >= min_n_samples:
-        ps = PowerSegment(start=ss_start_i, end=i,
-                          watts=watts[ss_start_i:i])
-        ss.append(ps)
+        idx.append(series.index[ss_start_i])
+        ss.append({'end': series.index[i-1],
+                   'power_stats': Normal(watts[ss_start_i:i])})
             
-    return ss
+    return pd.DataFrame(ss, index=idx)
 
 
-def sliding_mean_steady_states(
-                  np.ndarray[PW_DTYPE_t, ndim=1] watts,
-                  Py_ssize_t min_n_samples=3, 
-                  PW_DTYPE_t max_range=10,
-                  Py_ssize_t window_size=10):
+def sliding_mean_steady_states(series,
+                               Py_ssize_t min_n_samples=3, 
+                               PW_DTYPE_t max_range=10,
+                               Py_ssize_t window_size=10):
     """Steady_state detector where we calculate the mean *at most* the last
     window_size samples of each steady state;  if the next sample is more than
     max_range away from the mean then this is the end of the steady state.
 
     Args:
-        watts (np.ndarray): Watts. Row vector. np.float_32
+        series (pd.Series): Watts. np.float_32
         min_n_samples (int): Optional. Defaults to 3. Minimum number of 
             consecutive samples per steady state.  Hart used 3.
         max_range (float): Optional.
         window_size (int): number of samples
     
     Returns:
-        FeatureList of PowerSegments.
+        pd.DataFrame.  Each row is a steady state.  Columns:
+           * index: datetime of start of steady state
+           * end: datetime of end of steady state
+           * power_stats (slicedpy.Normal): summary stats describing power
     """
 
-    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
-
     cdef:
+        np.ndarray[PW_DTYPE_t, ndim=1] watts
         Py_ssize_t i, n, ss_start_i, ss_length # steady_state_start_index
         PW_DTYPE_t p, ss_mean, accumulator, delta # steady state max and mins
 
+    watts = series.values
+    _sanity_check_input_to_steady_state_detectors(watts, min_n_samples, max_range)
+
     n = len(watts)
-    ss = FeatureList() # list of steady states. What we return
+    idx = [] # index for dataframe
+    ss = [] # list of steady states. What we return
     ss_start_i = 0
-    accumulator = ss_mean = watts[ss_start_i]
+    accumulator = watts[ss_start_i]
+    ss_mean = watts[ss_start_i]
 
     for i from 1 <= i < n-1:
         p = watts[i]
@@ -189,9 +211,9 @@ def sliding_mean_steady_states(
         ss_length = i - ss_start_i
         if delta > max_range: # Just left a candidate steady state.
             if ss_length >= min_n_samples:
-                ps = PowerSegment(start=ss_start_i, end=i, 
-                                       watts=watts[ss_start_i:i])
-                ss.append(ps)
+                idx.append(series.index[ss_start_i])
+                ss.append({'end': series.index[i-1],
+                           'power_stats': Normal(watts[ss_start_i:i])})
             ss_start_i = i
             accumulator = ss_mean = watts[ss_start_i]
         else:
@@ -203,8 +225,8 @@ def sliding_mean_steady_states(
                 ss_mean = accumulator / (ss_length + 1)
 
     if (i - ss_start_i) >= min_n_samples:
-        ps = PowerSegment(start=ss_start_i, end=i, 
-                          watts=watts[ss_start_i:i])
-        ss.append(ps)
+        idx.append(series.index[ss_start_i])
+        ss.append({'end': series.index[i-1],
+                   'power_stats': Normal(watts[ss_start_i:i])})
             
-    return ss
+    return pd.DataFrame(ss, index=idx)
