@@ -124,10 +124,10 @@ def spike_histogram_bin_to_data_coordinates(bin_data, scale_x=1):
 # multiple_linear_regressions
 ###############################################################################
 
-def multiple_linear_regressions(data, window_size=10):
+def multiple_linear_regressions(series, window_size=10):
     """
     Args:
-        data (np.ndarray): power.
+        series (pd.Series): power.
         window_size (int): Width of each windows in number of samples.  
             Must be multiple of 2.  Windows are overlapping:
 
@@ -143,8 +143,8 @@ def multiple_linear_regressions(data, window_size=10):
           4. std_err
     """
     assert((window_size % 2) == 0)
-
-    half_window_size = window_size / 2
+    data = series.values
+    half_window_size = int(window_size / 2)
     n_windows = int(data.size / half_window_size) - 1
     x = np.arange(window_size)
     results = np.empty((n_windows, 4))
@@ -157,7 +157,10 @@ def multiple_linear_regressions(data, window_size=10):
         slope, intercept, r_value, p_value, std_err = stats.linregress(x, window)
         results[i] = (slope, intercept, r_value**2, std_err)
 
-    return results
+    idx_i = range(0, half_window_size*n_windows, half_window_size)
+    idx = series.index[idx_i]
+    return pd.DataFrame(results, index=idx, 
+                        columns=['slope','intercept','r_squared','std_err'])
 
 
 ###############################################################################

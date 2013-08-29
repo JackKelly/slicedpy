@@ -83,7 +83,7 @@ def plot_clusters(ax, db, X, title_append='', scale_x=1):
     ax.set_xlabel('date time')
 
 
-def plot_multiple_linear_regressions(ax, mlr, x, window_size=10, ax2=None):
+def plot_multiple_linear_regressions(ax, mlr, window_size=10, ax2=None):
     """
     Args:
         mlr: output from the multiple_linear_regressions() function
@@ -93,25 +93,16 @@ def plot_multiple_linear_regressions(ax, mlr, x, window_size=10, ax2=None):
             11113333
 
     """
-
-    half_window_size = window_size / 2
     n_windows = mlr.shape[0]
-    start_i = 0
-    end_i = window_size
-    for i in range(n_windows):
-        (slope, intercept, r_squared, std_err) = mlr[i]
-        X = [x[start_i], x[end_i]]
+    for i in range(n_windows-1):
+        (slope, intercept, r_squared, std_err) = mlr.iloc[i]
+        X = [mlr.index[i], mlr.index[i+1]]
         ax.plot(X, [intercept, intercept+(slope*window_size)], color='r')
         if ax2:
             ax2.plot(X, [std_err, std_err], color='k')
-        start_i += half_window_size
-        end_i += half_window_size
-        
 
     ax.set_title('Multiple linear regressions')
     ax.set_ylabel('watts')
 
     if ax2:
         ax2.set_title('std_err')
-
-
