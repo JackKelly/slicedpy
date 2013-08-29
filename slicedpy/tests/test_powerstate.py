@@ -19,16 +19,16 @@
 from __future__ import print_function, division
 import unittest
 import slicedpy.powerstate as ps
-from slicedpy.powersegment import PowerSegment
+from slicedpy.bunch import Bunch
 from slicedpy.powerstate import PowerState
 
 class TestPowerState(unittest.TestCase):
     def test_merge_pwr_sgmnts(self):
-        sig_pwr_sgmnts = [PowerSegment(start=  0, end=200, mean=100, var=10),
-                          PowerSegment(start=400, end=500, mean=103, var=10),
-                          PowerSegment(start=501, end=600, mean=300, var=10),
-                          PowerSegment(start=601, end=700, mean=300, var=10),
-                          PowerSegment(start=701, end=800, mean=999, var=99)]
+        sig_pwr_sgmnts = [Bunch(start=  0, end=200, mean=100, var=10),
+                          Bunch(start=400, end=500, mean=103, var=10),
+                          Bunch(start=501, end=600, mean=300, var=10),
+                          Bunch(start=601, end=700, mean=300, var=10),
+                          Bunch(start=701, end=800, mean=999, var=99)]
         (unique_pwr_states, 
          mapped_sig_pwr_sgmnts) = ps.merge_pwr_sgmnts(sig_pwr_sgmnts)
 
@@ -43,11 +43,11 @@ class TestPowerState(unittest.TestCase):
             self.assertAlmostEqual(corr_ups.var, test_ups.var)
 
         # Test mapped signature power segments
-        correct_msps = [PowerSegment(start=  0, end=200, mean=100, var=10, power_state=0),
-                        PowerSegment(start=400, end=500, mean=103, var=10, power_state=0),
-                        PowerSegment(start=501, end=600, mean=300, var=10, power_state=1),
-                        PowerSegment(start=601, end=700, mean=300, var=10, power_state=1),
-                        PowerSegment(start=701, end=800, mean=999, var=99, power_state=2)]
+        correct_msps = [Bunch(start=  0, end=200, mean=100, var=10, power_state=0),
+                        Bunch(start=400, end=500, mean=103, var=10, power_state=0),
+                        Bunch(start=501, end=600, mean=300, var=10, power_state=1),
+                        Bunch(start=601, end=700, mean=300, var=10, power_state=1),
+                        Bunch(start=701, end=800, mean=999, var=99, power_state=2)]
         
         for corr_msps, test_msps in zip(correct_msps, mapped_sig_pwr_sgmnts):
             self.assertEqual(corr_msps, test_msps)

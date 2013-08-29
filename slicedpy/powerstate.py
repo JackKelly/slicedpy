@@ -5,9 +5,9 @@ from slicedpy.normal import Normal
 
 
 class PowerState(Bunch):
-    """A ``PowerState`` is a generalisation of :class:`PowerSegment`.
+    """
     A washing machine might have three power states: washing, heating,
-    spinning.  PowerStates, unlike PowerSegments, do not have a start
+    spinning.  PowerStates do not have a start
     or an end.
 
     Attributes:
