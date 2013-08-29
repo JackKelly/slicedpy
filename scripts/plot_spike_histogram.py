@@ -38,7 +38,7 @@ splt.plot_spike_histogram(subplots[2], spike_histogram, bin_edges,
 # CLUSTERING
 
 row = spike_histogram[ROW_I,:]
-X = fd.spike_histogram_row_to_data_coordinates(row)
+X = fd.spike_histogram_bin_to_data_coordinates(row)
 db = DBSCAN(eps=10, min_samples=6).fit(X)
 
 ##############

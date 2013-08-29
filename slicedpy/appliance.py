@@ -47,38 +47,25 @@ class Appliance(object):
         # If power never ever drops to 0W then self.unique_power_states[1] == PowerState('standby')
         # and we should never be able to enter 'off' state.
         # each PowerState has these member variables:
-        #   * duration: GMM
-        #   * power: GMM, 
-        #   * decay: GMM, 
-        #   * spike_histogram: list of GMMs, one per bin (don't bother recording bin edges,
+        #   * duration: Vector (GMM)
+        #   * power: Vector (GMM)
+        #   * decay: Vector (GMM)
+        #   * spike_histogram: list of Vector (GMM)s, one per bin (don't bother recording bin edges,
         #     assume these remain constant)
-        #   * count_per_run = GMM: number of times this power state is seen per run 
-        #   * next_states = {1: {'diff between power states': GMM, 
-        #                        'forward diff': GMM, 
-        #                        'time between states^': GMM,
-        #                        'av power used between states^': float,
+        #   * count_per_run = Vector (GMM): number of times this power state is seen per run 
+        #   * next_states = {1: {'diff between power states': Vector (GMM), 
+        #                        'forward diff': Vector (GMM), 
+        #                        'time between states^': Vector (GMM),
+        #                        'mean power used between states^': float,
         #                        'probability': Float}}
         #
         # ^ these are used for handling the case where, for example, in the washing machine,
         # there are some really wild sections which are so wild that they are ignored
         # by the power segment detector.  But these sections still use power!
         #
-        # Also store all raw training data in each PowerState.  This is necessary
-        # so that we can re-fit GMMs when new signature examples are provided, or 
-        # when refining appliance models for a house.  It will also allow us to 
-        # experiment with classifiers which can handle all data.  And also to 
-        # draw plots to manually check the fit of GMMs to the data.
-        #   * _raw_durations = list of timedeltas
-        #   * _raw_powers = list of floats
-        #   * _raw_decays = list of floats
-        #   * _raw_spike_histograms = list of np.ndarray
-        #   * _raw_counts_per_run = list of ints
-
         # update: 
-        # * self._raw_total_durations = list of timedeltas
-        # * self._raw_total_energies = list of floats (kWh)
-        # * self.total_duration (GMM)
-        # * self.total_energy (GMM)
+        # * self.total_duration: Vector (GMM)
+        # * self.total_energy: Vector (GMM)
 
         # Not sure if we need to update these...
         # * self.reliable_powerstate_transitions = [(0,1), (1,5)] - transitions which are always

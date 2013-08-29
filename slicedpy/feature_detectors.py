@@ -97,13 +97,22 @@ def spike_histogram(series, merge_spikes=True, window_duration='T', n_bins=8):
     return spike_hist, bin_edges
 
 
-def spike_histogram_row_to_data_coordinates(row):
-    """make a 2d matrix X where each row stores the coordinates 
-    of a single data point."""
-    nonzero_i = np.nonzero(row)[0]
-    X = np.zeros((nonzero_i.size, 2), dtype=np.float64)
-    X[:,0] = nonzero_i
-    X[:,1] = row[nonzero_i]
+def spike_histogram_bin_to_data_coordinates(bin_data):
+    """make a 2d matrix suitable for clustering where each row stores the
+    coordinates of a single data point.  Each x coordinate is the
+    ordinal timestamp, each y coordinate is the count.  Elements with
+    count == 0 are ignored.
+
+    Args:
+        bin_data (pd.Series): one bin from the spike histogram.
+
+    Returns:
+        X (np.ndarray, dim=2, np.float64)
+    """
+    nonzero_i = np.nonzero(bin_data)[0]
+    X = np.empty((nonzero_i.size, 2), dtype=np.float64)
+    X[:,0] = mdates.date2num(bin_data[nonzero_i].index)
+    X[:,1] = bin_data[nonzero_i].values
     return X
 
 

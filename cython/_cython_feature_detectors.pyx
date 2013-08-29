@@ -26,9 +26,6 @@ cimport numpy as np
 import pandas as pd
 from slicedpy.normal import Normal
 
-from slicedpy.powersegment import PowerSegment
-from slicedpy.feature_list import FeatureList
-
 # Data types for timestamps (TS = TimeStamp)
 TS_DTYPE = np.uint64
 ctypedef np.uint64_t TS_DTYPE_t
