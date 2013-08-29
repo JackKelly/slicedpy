@@ -48,7 +48,7 @@ class Appliance(object):
         # and we should never be able to enter 'off' state.
         # each PowerState has these member variables:
         #   * duration: Vector (GMM)
-        #   * power: Vector (GMM)
+        #   * power: Vector (Normal)
         #   * decay: Vector (GMM)
         #   * spike_histogram: list of Vector (GMM)s, one per bin (don't bother recording bin edges,
         #     assume these remain constant)
