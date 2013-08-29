@@ -62,12 +62,12 @@ def get_merged_spikes_pandas(series):
     return pd.Series(get_merged_spikes(series.values), index=series.index)
 
 
-def spike_histogram(series, merge_spikes=True, window_duration='T', n_bins=8):
+def spike_histogram(series, merge_spikes=True, window_duration=60, n_bins=8):
     """
     Args:
         * series (pd.Series): watts
         * merge_spikes (bool): Default = True
-        * window_duration (str or tuple): Pandas period alias e.g. 'T'.
+        * window_duration (float): Width of each window in seconds
         * n_bins (int): number of bins per window.
 
     Returns:
@@ -82,8 +82,9 @@ def spike_histogram(series, merge_spikes=True, window_duration='T', n_bins=8):
         fdiff = get_merged_spikes_pandas(fdiff)        
 
     abs_fdiff = np.fabs(fdiff)
+    freq = (window_duration, 'S')
     date_range, boundaries = _indicies_of_periods(fdiff.index, 
-                                                  freq=window_duration)
+                                                  freq=freq)
     bin_edges = np.concatenate(([0], np.exp(np.arange(1,n_bins+1))))
     bin_edges = np.round(bin_edges).astype(int)
     cols = zip(bin_edges[:-1], bin_edges[1:])
@@ -97,21 +98,24 @@ def spike_histogram(series, merge_spikes=True, window_duration='T', n_bins=8):
     return spike_hist, bin_edges
 
 
-def spike_histogram_bin_to_data_coordinates(bin_data):
+def spike_histogram_bin_to_data_coordinates(bin_data, scale_x=1):
     """make a 2d matrix suitable for clustering where each row stores the
     coordinates of a single data point.  Each x coordinate is the
-    ordinal timestamp, each y coordinate is the count.  Elements with
+    ordinal timestamp (in ordinal time where 1 == 1st Jan 0001; 2 =
+    2nd Jan 0001 etc), each y coordinate is the count.  Elements with
     count == 0 are ignored.
 
     Args:
-        bin_data (pd.Series): one bin from the spike histogram.
+      * bin_data (pd.Series): one bin from the spike histogram.
+      * scale_x (float): multiple ordinal time by this value.
 
     Returns:
-        X (np.ndarray, dim=2, np.float64)
+      * X (np.ndarray, dim=2, np.float64)
+
     """
     nonzero_i = np.nonzero(bin_data)[0]
     X = np.empty((nonzero_i.size, 2), dtype=np.float64)
-    X[:,0] = mdates.date2num(bin_data[nonzero_i].index)
+    X[:,0] = mdates.date2num(bin_data[nonzero_i].index) * scale_x
     X[:,1] = bin_data[nonzero_i].values
     return X
 

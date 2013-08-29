@@ -1,19 +1,19 @@
 import numpy as np
 import pylab as pl
-
+import matplotlib.dates as mdates
 
 def plot_steady_states(ax, states, offset=0, 
                        color='g', label='Steady state'):
     """
     Args:
-        ax (Axes)
-        states (pd.DataFrame): Steady States
-        offset (int or float): add this to ss.mean
-        color (str)
-        label (str)
+      * ax (Axes)
+      * states (pd.DataFrame): Steady States
+      * offset (int or float): add this to ss.mean
+      * color (str)
+      * label (str)
 
     Returns:
-        line
+      * line
     """
     line = None
     for start, val in states.iterrows():
@@ -27,28 +27,26 @@ def plot_steady_states(ax, states, offset=0,
 
 
 def plot_spike_histogram(ax, spike_histogram, bin_edges, 
-                         num_start_time, num_end_time, title='Spike histogram'):
+                         title='Spike histogram'):
     """
     Args:
-        ax (maplotlib.Axes)
-        spike_histogram (np.array): returned by spike_histogram()
-        bin_edges (np.array): output as second return value of spike_histogram
-        num_start_time, num_end_time (float): the start and end date times for
-            the time window represented by the whole spike histogram.  In
-            ordinal time (where 1 == 1st Jan 0001; 2 = 2nd Jan 0001 etc)
-        title (str): Plot title.
+      * ax (maplotlib.Axes)
+      * spike_histogram (pd.DataFrame): returned by spike_histogram()
+      * bin_edges (np.ndarray, ndim=1, int): returned by spike_histogram()
+      * title (str): Plot title.
     """
-    n_bins = spike_histogram.shape[0]
-    vmax = spike_histogram.max()
-    ax.imshow(spike_histogram, aspect='auto', vmin=0, vmax=vmax, 
+    n_bins = spike_histogram.columns.size
+    vmax = np.max(spike_histogram.values)
+    img = np.transpose(spike_histogram.values.astype(int))
+    num_start_time = mdates.date2num(spike_histogram.index[0])
+    num_end_time = mdates.date2num(spike_histogram.index[-1])
+    ax.imshow(img, aspect='auto', vmin=0, vmax=vmax, 
                interpolation='none', origin='lower',
                extent=(num_start_time, num_end_time, 0, n_bins))
-
     ax.set_ylabel('Bin edges in watts')
     ax.set_title(title)
     ax.set_yticks(np.arange(n_bins+1))
     ax.set_yticklabels(['{:.0f}'.format(w) for w in bin_edges])
-
     return ax
 
 
