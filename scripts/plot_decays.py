@@ -8,7 +8,7 @@ import matplotlib.dates as mdates
 import numpy as np
 
 SLIDING_MEANS_STEADY_STATES = False
-RD_STEADY_STATES = False
+RD_STEADY_STATES = True
 TTESTS = False
 SS_LINREGRESS = False
 STD = False # spike then decay
@@ -25,18 +25,20 @@ subplot_i = 2
 # SLIDING MEANS STEADY STATES
 if SLIDING_MEANS_STEADY_STATES:
     print("Sliding mean steady states...")
-    sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series.values,
+    sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series,
                                                                max_range=15)
-    plot_steady_states(subplots[0], sliding_mean_steady_states, chan.series.index,
+    plot_steady_states(subplots[0], sliding_mean_steady_states,
                        offset=2, color='y', label='Sliding mean')
+
 
 #####################
 # RELATIVE DEVIATION STEADY STATES
 if RD_STEADY_STATES:
     print("Relative deviation steady states...")
-    relative_deviation_steady_states = fd.relative_deviation_steady_states(chan.series.values)
-    plot_steady_states(subplots[0], relative_deviation_steady_states, 
-                       chan.series.index, offset=-1, color='c', label='Relative deviation')
+    relative_deviation_power_segments = fd.relative_deviation_power_sgmnts(chan.series)
+    plot_steady_states(subplots[0], relative_deviation_power_segments, 
+                        offset=-1, color='c', label='Relative deviation')
+
 
 ####################
 subplots[0].legend()
@@ -45,10 +47,9 @@ subplots[0].legend()
 # T Test...
 if TTESTS:
     print("Calculating and plotting t-tests...")
-    for ss in relative_deviation_steady_states:
-        start = chan.series.index[ss.start]
-        end = chan.series.index[ss.end]
-        p_value = ss.ttest_both_halves(chan.series.values)
+    for start, ss in relative_deviation_power_segments.iterrows():
+        end = ss['end']
+        p_value = fd.ttest_both_halves(chan.series, start=start, end=end)
         subplots[subplot_i].plot([start, end], [p_value, p_value], color='r', linewidth=4)
     subplots[subplot_i].set_title('p value for both halves of steady state from relative duration')
     subplots[subplot_i].set_ylabel('p value')
@@ -58,11 +59,10 @@ if TTESTS:
 # Linear regression...
 if SS_LINREGRESS:
     print("Calculating and plotting linear regression...")
-    for ss in relative_deviation_steady_states:
-        start = chan.series.index[ss.start]
-        end = chan.series.index[ss.end]
-        ss.linregress(chan.series)
-        subplots[subplot_i].plot([start, end], [ss.slope, ss.slope], color='r', linewidth=4)
+    for start, ss in relative_deviation_power_segments.iterrows():
+        end = ss['end']
+        slope, r_value, p_value, stderr = fd.linregress(chan.series, start, end)
+        subplots[subplot_i].plot([start, end], [slope, slope], color='r', linewidth=4)
     subplots[subplot_i].set_title('Slope from linear regression from relative duration steady states')
     subplots[subplot_i].set_ylabel('slope in watts/second')
     subplot_i += 1
@@ -72,10 +72,9 @@ if SS_LINREGRESS:
 if STD:
     print("Calculating and plotting spike then decay...")
     stds = fd.spike_then_decay(chan.series, mode='linear')
-    for std in stds:
-        start = chan.series.index[std.start]
-        end = chan.series.index[std.end]
-        subplots[subplot_i].plot([start], [std.slope],
+    for start, std in stds.iterrows():
+        end = std['end']
+        subplots[subplot_i].plot([start], [std['slope']],
                                  'o', markersize=6, color='r', linewidth=4)
     subplots[subplot_i].set_title('Spike Then Decay')
     subplots[subplot_i].set_ylabel('slope in watts/second')
@@ -89,16 +88,17 @@ if STDP:
     print("Calculating and plotting spike then poly decay...")
     stds = fd.spike_then_decay(chan.series, mode='poly')
     curve = lambda x, c, m: c + (m / x)
-    for std in stds:
-        start = chan.series.index[std.start]
-        end = chan.series.index[std.end]
-        X = chan.series.index[std.start:std.end]
+    for start, std in stds.iterrows():
+        end = std['end']
+        X = chan.series.index[(chan.series.index >= start) & 
+                              (chan.series.index < end)]
         X = mdates.date2num(X)
         x = X * mdates.SEC_PER_DAY
-        subplots[subplot_i].plot([start], [std.popt[1]],
+        subplots[subplot_i].plot([start], [std['slope']],
                                  'o', markersize=6, color='r', linewidth=4)
         subplots[subplot_i+1].plot(X, 
-                                   curve((x-x[0])+1, std.popt[0], std.popt[1]),
+                                   curve((x-x[0])+1, std['intercept'], 
+                                         std['slope']),
                                    color='r')
 
     subplots[subplot_i].set_title('Spike Then poly Decay.  y = c + m/x')
@@ -110,6 +110,5 @@ if STDP:
     subplots[subplot_i+1].grid()
 
     subplot_i += 2
-
 
 plt.show()

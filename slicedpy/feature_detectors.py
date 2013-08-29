@@ -6,8 +6,7 @@ import copy
 from scipy import stats
 import scipy.optimize
 import matplotlib.dates as mdates
-import math
-from feature_list import FeatureList
+import math, datetime
 from slicedpy.normal import Normal
 from pda.channel import _indicies_of_periods
 
@@ -164,13 +163,57 @@ def multiple_linear_regressions(series, window_size=10):
 
 
 ###############################################################################
+# DECAYS
+###############################################################################
+
+def ttest_both_halves(watts, start, end):
+    """
+    Test if the left and right half of the watts masked `start` and `end`
+    to see if they have the same mean or not.
+
+    Returns two-tailed p-value.
+
+    Args:
+      * watts (:class:`pandas.Series`)
+      * start (:class:`pandas.Timestamp`)
+      * end (:class:`pandas.Timestamp`)
+    """
+    width = end - start
+    half_way = start + width.__div__(2)
+    left = watts[(watts.index >= start) & (watts.index < half_way)]
+    right = watts[(watts.index >= half_way) & (watts.index < end)]
+    return stats.ttest_ind(left, right)[1]
+
+def linregress(watts, start, end):
+    """
+    Linear regression of data masked `start` and `end`
+
+    Args
+      * watts (:class:`pandas.Series`)
+      * start (:class:`pandas.Timestamp`)
+      * end (:class:`pandas.Timestamp`)
+
+    Returns:
+      * ``slope`` (in units of watts per second)
+      * ``r_value``
+      * ``p_value``
+      * ``stderr``
+    """
+    ss = watts[(watts.index >= start) & (watts.index < end)]
+    x = mdates.date2num(ss.index) * mdates.SEC_PER_DAY
+    (slope, _, r_value, 
+     p_value, stderr) = stats.linregress(x, ss.values)
+    return slope, r_value, p_value, stderr
+
+
+###############################################################################
 # SPIKE THEN DECAY
 ###############################################################################
 
 def spike_indices(data, min_spike_size, max_spike_size=None):
-    # Find spikes between min_spike_size and max_spike_size
+    """Find spikes between min_spike_size and max_spike_size."""
     fdiff = np.diff(data)
-    fdiff = merge_spikes(fdiff)
+    fdiff = get_merged_spikes(fdiff)
     if max_spike_size is None:
         spike_indices = np.where(fdiff > min_spike_size)[0]
     else:
@@ -184,17 +227,26 @@ def spike_indices(data, min_spike_size, max_spike_size=None):
 def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
                      decay_window=10, mode='linear'):
     """
+    Args:
+      * series (pd.Series): watts
+      * min_spike_size (float): watts
+      * max_spike_size (float or None): optional.  watts.
+      * decay_window (float): seconds
+      * mode (str): 'linear' or 'poly'
+
     Returns:
-        FeatureList of Features.
+      * pd.DataFrame with 'end' and 'decay' columns set.
     """
-    def linear(f, x, values):
-        (f.slope, _, f.r_value, 
-         f.p_value, f.stderr) = stats.linregress(x, values)
+    def linear(x, values):
+        (slope, intercept, r_value, 
+         p_value, stderr) = stats.linregress(x, values)
+        return intercept, slope
 
     curve = lambda x, c, m: c + (m / x)
-    def poly(f, x, values):        
-        f.popt, f.pconv = scipy.optimize.curve_fit(curve, (x-x[0])+1, values,
-                                                   p0=(values.min(), 281.5))
+    def poly(x, values):        
+        popt, pconv = scipy.optimize.curve_fit(curve, (x-x[0])+1, values,
+                                               p0=(values.min(), 281.5))
+        return popt[0], popt[1] # intercept, slope
 
     if mode=='linear':
         regression_func = linear
@@ -206,16 +258,21 @@ def spike_then_decay(series, min_spike_size=600, max_spike_size=None,
     spike_idxs = spike_indices(series.values[:-decay_window], 
                                min_spike_size, max_spike_size)
 
-    # For each spike, do linear regression of next decay_window values
-    features = FeatureList()
+    timedelta = datetime.timedelta(seconds=decay_window)
+
+    # For each spike, do regression of next decay_window values
+    features = []
     for spike_i in spike_idxs:
-        f = Feature(start=spike_i, end=spike_i+decay_window)
-        chunk = series[f.start:f.end]
+        start = series.index[spike_i]
+        end = start + timedelta
+        chunk = series[spike_i:]
+        chunk = chunk[chunk.index < end]
         x = mdates.date2num(chunk.index) * mdates.SEC_PER_DAY
-        regression_func(f, x, chunk.values)
+        intercept, slope = regression_func(x, chunk.values)
+        f = {'end':end, 'slope':slope, 'intercept':intercept}
         features.append(f)
 
-    return features
+    return pd.DataFrame(features, index=series.index[spike_idxs])
 
 
 #############################################################################

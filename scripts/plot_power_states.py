@@ -15,17 +15,19 @@ subplots, chan = init_aggregate_and_appliance_dataset_figure(
 #####################
 # SLIDING MEANS STEADY STATES
 print("Sliding mean steady states...")
-sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series.values,
+sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series,
                                                            max_range=15)
-plot_steady_states(subplots[0], sliding_mean_steady_states, chan.series.index,
+plot_steady_states(subplots[0], sliding_mean_steady_states,
                    offset=2, color='y', label='Sliding mean')
+
 
 #####################
 # RELATIVE DEVIATION STEADY STATES
-print("Relative deviation steady states...")
-relative_deviation_steady_states = fd.relative_deviation_steady_states(chan.series.values)
-plot_steady_states(subplots[0], relative_deviation_steady_states, 
-                   chan.series.index, offset=-1, color='c', label='Relative deviation')
+print("Relative deviation power segments...")
+relative_deviation_power_segments = fd.relative_deviation_power_sgmnts(chan.series)
+plot_steady_states(subplots[0], relative_deviation_power_segments, 
+                    offset=-1, color='c', label='Relative deviation')
+
 
 ####################
 subplots[0].legend()
