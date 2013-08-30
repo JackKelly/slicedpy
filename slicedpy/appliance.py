@@ -28,20 +28,6 @@ class Appliance(object):
         # to come up with "signature power states".
         sig_power_states = fd.merge_features(pwr_sgmnts, decays, spike_histogram)
         return sig_power_states
-        # DECAYS:
-        # Assume decays to be within some constant number of
-        # seconds around the start.  Say 10 seconds. Set start time of
-        # powerstate to be start time of decay.
-        # SPIKE HISTOGRAM:
-        # Just take all.
-        # RETURNS
-        # List of PowerStates.  Each records:
-        # * start: datetime of start of each power state
-        # * end (np.datetime64? or datetime.datetime?) = datetime of end of each power state
-        # * power DataStore (Normal) (maybe use GMM if we can figure out how 
-        #                             best to compare similarity between two GMMs)
-        # * decay DataStore (GMM)
-        # * spike_histogram (2D np.ndarray): one col per bin
 
         # Now take the sequence of sig power states and merge these into
         # the set of unique power states we keep for each appliance.
@@ -122,8 +108,8 @@ class Appliance(object):
         First pass: find appliances and appliance power states based on
         general model (this will necessarily be permissive).  Ignore power
         states where other appliances are producing signals in any feature
-        detector (this might be too strict?  Maybe just don’t re-train feature
+        detector (this might be too strict?  Maybe just don't re-train feature
         detector if that feature detector is changing due to another
-        appliance?)  Redefine power states based on “quiet” power states found
+        appliance?)  Redefine power states based on "quiet" power states found
         in aggregate data.  Cite Oliver Parsons.
         """

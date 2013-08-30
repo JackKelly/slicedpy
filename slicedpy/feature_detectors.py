@@ -227,7 +227,7 @@ def spike_indices(data, min_spike_size, max_spike_size=None):
 
 
 def spike_then_decay(series, min_spike_size=600, max_spike_size=None, 
-                     decay_window=10, mode='linear'):
+                     decay_window=10, mode='poly'):
     """
     Args:
       * series (pd.Series): watts
@@ -547,7 +547,8 @@ def merge_features(pwr_sgmnts, decays, spike_histogram):
         * start: datetime of start of each power state
         * end: datetime of end of each power state
         * power_stats (Normal)
-        * decay (float)
+        * slope (float)
+        * intercept (float)
         * spike_histogram (2D np.ndarray): one col per bin
 
     """
@@ -559,18 +560,19 @@ def merge_features(pwr_sgmnts, decays, spike_histogram):
 
         # DECAYS:
         # Assume decays to be within some constant number of
-        # seconds around the start.  Say 10 seconds. Set start time of
+        # seconds around the start. Set start time of
         # powerstate to be start time of decay.        
-        max_time_diff = datetime.timedelta(seconds=10)
+        max_time_diff = datetime.timedelta(seconds=20)
         i_of_nearest_decay = utils.find_nearest(decays, target=start, 
                                                 max_time_diff=max_time_diff)
         if i_of_nearest_decay is not None:
-            pwr_state.decay = decays.iloc[i_of_nearest_decay]['slope']
+            pwr_state.slope = decays.iloc[i_of_nearest_decay]['slope']
+            pwr_state.intercept = decays.iloc[i_of_nearest_decay]['intercept']
             pwr_state.start = decays.index[i_of_nearest_decay]
         
         # SPIKE HISTOGRAM:
-        # Just take all.
-
+        # Just take all.  If the power state is shorter in duration than
+        # a single spike histogram window then this might be empty.
         cropped_spike_hist = spike_histogram[(spike_histogram.index >=
                                               pwr_state.start) &
                                              (spike_histogram.index < 

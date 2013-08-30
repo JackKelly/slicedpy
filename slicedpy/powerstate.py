@@ -2,6 +2,8 @@ from __future__ import print_function, division
 from bunch import Bunch
 import copy
 from slicedpy.normal import Normal
+import matplotlib.dates as mdates
+import numpy as np
 
 class PowerState(Bunch):
     """
@@ -13,9 +15,28 @@ class PowerState(Bunch):
     def __init__(self, **kwds):
         super(PowerState, self).__init__(**kwds)
 
+    def plot(self, ax, color='k'):
+        ax.plot([self.start, self.end], 
+                [self.power_stats.mean, self.power_stats.mean], color=color)
+        
+        if self.__dict__.get('slope') is not None:
+            print("plotting slope: intercept=", self.intercept, "slope=", self.slope)
+            curve = lambda x, c, m: c + (m / x)
+            num_start = mdates.date2num(self.start)
+            num_end = num_start + (10 / mdates.SEC_PER_DAY)
+            X = np.linspace(num_start, num_end, 10)
+            x = X * mdates.SEC_PER_DAY
+            ax.plot(X, 
+                    curve((x-x[0])+1, self.intercept, self.slope),
+                    color=color)
+
+
 
 def merge_pwr_sgmnts(signature_pwr_segments):
-    """Merge signature :class:`PowerSegment`s into a list of 
+    """
+    THIS FUNCTION IS CURRENTLY BROKEN PENDING REFACTORING!!!
+
+    Merge signature :class:`PowerSegment`s into a list of 
     unique :class:`PowerState`s.
 
     Args:
