@@ -11,13 +11,15 @@ class Normal(Bunch):
       (see reset())
     """
 
-    def __init__(self, **kwds):
+    def __init__(self, values=None, **kwds):
         """
         Args
           * values (np.ndarray) (optional)
         """
         super(Normal, self).__init__(**kwds)
         self.reset()
+        if values is not None:
+            self.partial_fit(values)
 
     def reset(self):
         self._fit_has_been_called = False

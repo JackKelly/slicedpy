@@ -15,6 +15,7 @@ def find_nearest(data, target, align='start', max_time_diff=None):
 
     Returns:
       int. Index into `data` for the element nearest in time to `target`.
+      Returns None if diff is > `max_time_diff`
     
     """
 

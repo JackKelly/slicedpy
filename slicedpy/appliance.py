@@ -1,10 +1,15 @@
 import feature_detectors as fd
 from powerstate import PowerState
+import networkx as nx
 
 class Appliance(object):
 
     def __init__(self):
-        self.unique_power_states = [PowerState('off')]
+        self.reset()
+
+    def reset(self):
+        self.power_state_graph = nx.DiGraph()
+#        self.power_state_graph.add_node(PowerState('off'))
 
     def train_on_single_example(self, sig):
         """
@@ -17,55 +22,61 @@ class Appliance(object):
         # Extract features.  Each returns a DataFrame.
         pwr_sgmnts = fd.min_max_power_sgmnts(sig.series)
         decays = fd.spike_then_decay(sig.series)
-        spike_histogram = fd.spike_histogram(sig.series)
+        spike_histogram, bin_edges = fd.spike_histogram(sig.series)
 
         # Now fuse features: i.e. associate features with each other
         # to come up with "signature power states".
-        sig_power_states = fd.sig_power_states(pwr_sgmnts, decays, spike_histogram)
-        # DECAYS: 
+        sig_power_states = fd.merge_features(pwr_sgmnts, decays, spike_histogram)
+        return sig_power_states
+        # DECAYS:
         # Assume decays to be within some constant number of
         # seconds around the start.  Say 10 seconds. Set start time of
         # powerstate to be start time of decay.
         # SPIKE HISTOGRAM:
         # Just take all.
         # RETURNS
-        # DataFrame.  One row per sig power state.  Cols:
-        # * index = datetime of start of each power state
+        # List of PowerStates.  Each records:
+        # * start: datetime of start of each power state
         # * end (np.datetime64? or datetime.datetime?) = datetime of end of each power state
-        # * decay (float)
-        # * spike_histogram (DataFrame: just a copy of spike_histogram masked
-        #   by the start and end times of the powerstate.)
+        # * power DataStore (Normal) (maybe use GMM if we can figure out how 
+        #                             best to compare similarity between two GMMs)
+        # * decay DataStore (GMM)
+        # * spike_histogram (2D np.ndarray): one col per bin
 
         # Now take the sequence of sig power states and merge these into
         # the set of unique power states we keep for each appliance.
-        self.update_unique_power_states(sig_power_states)
+        ##### self.update_power_state_graph(sig_power_states)
         # Just figure out which power segments are
         # similar based just on power.  Don't bother trying to split
         # each power state based on spike histogram yet.
-        # self.unique_power_states is a list of PowerStates where:
-        # self.unique_power_states[0] is 'off'
-        # If power never ever drops to 0W then self.unique_power_states[1] == PowerState('standby')
-        # and we should never be able to enter 'off' state.
+        # self.power_state_graph is NetworkX DiGraph.
+        # self.power_state_graph node 0 is 'off'
+        # If power never drops to 0W then self.power_state_graph and a node PowerState('standby')
+        # and we should never be able to enter 'off' state??
         # each PowerState has these member variables:
-        #   * duration: Vector (GMM)
-        #   * power: Vector (Normal)
-        #   * decay: Vector (GMM)
-        #   * spike_histogram: list of Vector (GMM)s, one per bin (don't bother recording bin edges,
-        #     assume these remain constant)
-        #   * count_per_run = Vector (GMM): number of times this power state is seen per run 
-        #   * next_states = {1: {'diff between power states': Vector (GMM), 
-        #                        'forward diff': Vector (GMM), 
-        #                        'time between states^': Vector (GMM),
-        #                        'mean power used between states^': float,
-        #                        'probability': Float}}
+        #   * duration: DataStore (GMM)
+        #   * power: DataStore (Normal)
+        #   * decay: DataStore (GMM)
+        #   * spike_histogram: 2D DataStore (GMM), one col per bin 
+        #     (don't bother recording bin edges, assume these remain constant
+        #      in fact, put bin edges in a config.py file)
+        #   * count_per_run = DataStore (GMM): number of times this power state is seen per run 
+
+        # Graph edges:
+        #   * diff between power segment mean: DataStore (GMM), 
+        #   * forward diff: DataStore (GMM) <- actually, maybe don't bother with this
+        #   * time between states^: DataStore (GMM)
+        #   * mean power used between states^': float
+        #   * 'probability': Float (or can we use DiGraph's 'weight' edge attribute?): per
+        #     node, the probability of all *outbound* edges sum to 1.
         #
         # ^ these are used for handling the case where, for example, in the washing machine,
         # there are some really wild sections which are so wild that they are ignored
         # by the power segment detector.  But these sections still use power!
         #
         # update: 
-        # * self.total_duration: Vector (GMM)
-        # * self.total_energy: Vector (GMM)
+        # * self.total_duration: DataStore (GMM)
+        # * self.total_energy: DataStore (GMM)
 
         # Not sure if we need to update these...
         # * self.reliable_powerstate_transitions = [(0,1), (1,5)] - transitions which are always

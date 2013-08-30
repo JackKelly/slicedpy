@@ -3,23 +3,14 @@ from bunch import Bunch
 import copy
 from slicedpy.normal import Normal
 
-
 class PowerState(Bunch):
     """
     A washing machine might have three power states: washing, heating,
-    spinning.  PowerStates do not have a start
-    or an end.
+    spinning.
 
     Attributes:
-      * features: a dict of Normals, usually including: 
-        {duration: Normal(), # seconds
-         power: Normal(), # watts
-         ramp: None or Normal(),
-         spike_histogram: [Normal, Normal, Normal, Normal, Normal]
-        }
     """
     def __init__(self, **kwds):
-        self.features = {}
         super(PowerState, self).__init__(**kwds)
 
 

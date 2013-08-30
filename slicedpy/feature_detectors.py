@@ -8,6 +8,8 @@ import scipy.optimize
 import matplotlib.dates as mdates
 import math, datetime
 from slicedpy.normal import Normal
+from slicedpy.powerstate import PowerState
+from slicedpy import utils
 from pda.channel import _indicies_of_periods
 
 """
@@ -530,3 +532,52 @@ def minimise_mean_deviation_power_sgmnts(series,
             ps_end_i = ps_start_i + initial_window_size
 
     return pd.DataFrame(power_sgmnts, index=idx)
+
+
+#############################################################################
+# MERGE FEATURES
+#############################################################################
+
+def merge_features(pwr_sgmnts, decays, spike_histogram):
+    """Associate features with each other to produce a list of 
+    "signature power states".
+
+    Returns:
+        List of PowerStates.  Each records:
+        * start: datetime of start of each power state
+        * end: datetime of end of each power state
+        * power_stats (Normal)
+        * decay (float)
+        * spike_histogram (2D np.ndarray): one col per bin
+
+    """
+    merged = []
+    for start, pwr_seg in pwr_sgmnts.iterrows():
+        pwr_state = PowerState(start=start, 
+                               end=pwr_seg['end'],
+                               power_stats=pwr_seg['power_stats'])
+
+        # DECAYS:
+        # Assume decays to be within some constant number of
+        # seconds around the start.  Say 10 seconds. Set start time of
+        # powerstate to be start time of decay.        
+        max_time_diff = datetime.timedelta(seconds=10)
+        i_of_nearest_decay = utils.find_nearest(decays, target=start, 
+                                                max_time_diff=max_time_diff)
+        if i_of_nearest_decay is not None:
+            pwr_state.decay = decays.iloc[i_of_nearest_decay]['slope']
+            pwr_state.start = decays.index[i_of_nearest_decay]
+        
+        # SPIKE HISTOGRAM:
+        # Just take all.
+
+        cropped_spike_hist = spike_histogram[(spike_histogram.index >=
+                                              pwr_state.start) &
+                                             (spike_histogram.index < 
+                                              pwr_state.end)]
+        pwr_state.spike_histogram = cropped_spike_hist.values
+
+        merged.append(pwr_state)
+
+    return merged
+        
