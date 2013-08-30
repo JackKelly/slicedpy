@@ -46,12 +46,13 @@ def two_samples_from_different_distribtions():
                       21.78256937,  15.31409412,   9.22848329,   2.44450088])
     return rvs1, rvs2
 
+
 class TestStats(unittest.TestCase):
 
     def test_welch_ttest(self):
         def _test_welch_ttest(rvs1, rvs2):
-            norm1 = Normal(values=rvs1)
-            norm2 = Normal(values=rvs2)
+            norm1 = Normal().fit(rvs1)
+            norm2 = Normal().fit(rvs2)
             wtt = norm1.welch_ttest(norm2)
             stt = stats.ttest_ind(rvs1, rvs2, equal_var=False)[1]
             self.assertAlmostEqual(wtt, stt)
@@ -63,29 +64,60 @@ class TestStats(unittest.TestCase):
 
     def test_similar_mean(self):
         rvs1, rvs2 = two_samples_from_same_distribtion()
-        norm1 = Normal(values=rvs1)
-        norm2 = Normal(values=rvs2)
+        norm1 = Normal().fit(rvs1)
+        norm2 = Normal().fit(rvs2)
         self.assertTrue(norm1.similar_mean(norm2))
 
         rvs1, rvs2 = two_samples_from_different_distribtions()
-        norm1 = Normal(values=rvs1)
-        norm2 = Normal(values=rvs2)
+        norm1 = Normal().fit(rvs1)
+        norm2 = Normal().fit(rvs2)
         self.assertFalse(norm1.similar_mean(norm2))
+
+    def _compare_normal_and_array(self, norm, arr, ddof=1):
+        self.assertEqual(norm.size, arr.size)
+        self.assertEqual(norm.max, arr.max())
+        self.assertEqual(norm.min, arr.min())
+        self.assertAlmostEqual(norm.mean, arr.mean())
+        self.assertAlmostEqual(norm.std, arr.std(ddof=ddof), 0)
+        self.assertEqual(round(norm.var), round(arr.var(ddof=ddof)))
 
     def test_rough_mean_of_two_normals(self):
         def _test_mean_of_two_normals(rvs1, rvs2):
             rvs3 = np.concatenate([rvs1, rvs2])
-            norm1 = Normal(values=rvs1)
-            norm2 = Normal(values=rvs2)
-            norm3 = norm1.rough_mean_of_two_normals(norm2)
-            self.assertEqual(norm3.size, rvs3.size)
-            self.assertAlmostEqual(norm3.mean, rvs3.mean())
-            self.assertEqual(round(norm3.var), round(rvs3.var()))
+            norm1 = Normal().fit(rvs1)
+            norm2 = Normal().fit(rvs2)
+            norm3 = norm1.rough_combination(norm2)
+            self._compare_normal_and_array(norm3, rvs3, ddof=0)
 
         rvs1, rvs2 = two_samples_from_same_distribtion()
         _test_mean_of_two_normals(rvs1, rvs2)
         rvs1, rvs2 = two_samples_from_different_distribtions()
         _test_mean_of_two_normals(rvs1, rvs2)
+
+    def test_reset(self):
+        rvs1, rvs2 = two_samples_from_different_distribtions()
+        norm = Normal().fit(rvs1)
+        self._compare_normal_and_array(norm, rvs1)
+        norm.reset()
+        norm.fit(rvs2)
+        self._compare_normal_and_array(norm, rvs2)
+
+    def test_partial_fit(self):
+        rvs1, rvs2 = two_samples_from_different_distribtions()
+        rvs3, rvs4 = two_samples_from_same_distribtion()
+        norm = Normal()
+        norm.partial_fit(rvs1)
+        self._compare_normal_and_array(norm, rvs1)
+        norm.partial_fit(rvs2)
+        arr = np.append(rvs1, rvs2)
+        self._compare_normal_and_array(norm, arr)
+        norm.partial_fit(rvs3)
+        arr = np.append(arr, rvs3)
+        self._compare_normal_and_array(norm, arr)
+        norm.partial_fit(rvs4)
+        arr = np.append(arr, rvs4)
+        self._compare_normal_and_array(norm, arr)
+        
 
 if __name__ == '__main__':
     unittest.main()

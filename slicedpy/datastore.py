@@ -91,7 +91,7 @@ def test_fitting_and_plotting():
     from sklearn import mixture
     import matplotlib.pyplot as plt
 
-    model = mixture.GMM(n_components=2)
+    model = mixture.GMM(n_components=1)
     ds = DataStore(model=model)
     ds.append(np.random.randn(100,1))
     ds.append(10+np.random.randn(200,1))
