@@ -77,28 +77,65 @@ class Appliance(object):
 
 
     def disaggregate(self, aggregate, pwr_sgmnts, decays, spike_histogram):
-        """
-        Incrementally build up candidate agg_power_states, as the union of all
-        power states suggested by each feature extractor:
-          1. find all transitions between pwr_sgmnts consistent with transitions
-             seen for this appliance.  Require both +ve and -ve transitions
-             (or maybe just require either / or.  Remember that we want to be 
-             permissive to give the discrete optimisation something to do!)
-             Create a list of candidate agg_power_states, with scores, durations and
-             magnitude of power change (to tweak the energy estimation).
-          2. find all ramps consistent with ramps for this appliance.  
-             Add / modify agg_power_states.
-          3. Same with spike histogram.
+        """Find all possible single power states
+        -------------------------------------
 
-        Find all clusters of power states which appear within a self.total_duration.max
-        period of time.  Then check that these clusters have legal state sequences.
-        If they do then 
+        Each appliance has a set of power states.  For each power state we 
+        have a set of "ways in" and a set of "ways out".  These "ways in" and
+        "ways out" comprise the *differences between* power states (like Hart's
+        edge detector).  Find all possible single power states (don't worry
+        about sequence for now); *including* overlapping candidates (remember 
+        that we want to be permissive to give the discrete optimisation
+        something to do!):
+        
+        For each power state in self.power_state_graph:
+          1) Find all possible "ways in": find all power state transitions 
+             between the min and max of any "ways in" in the aggregate. (If we
+             want to be really permissive then also find candidates based just
+             on decays / spike histogram: e.g. if
+             this state starts with a ramp then find all ramps consistent with
+             this state and add / merge these with "ways in" found just from
+             power state transitions... but let's not do that to start with; just
+             find candidates based on power state transitions).
+          2) For each "candidate way in", find all power state transitions
+             between the min and max of any "ways out", within the min and
+             max duration of the power state.  If there are no "ways out" for
+             this "way in" then ignore this "way in".  If there are multiple
+             "ways out" then create multiple (overlapping) candidate power
+             states. For each candidate power state, output:
+               * the confidence (based on way in, way out, duration, 
+                 decay, spike hist)
+               * the start & end times
+               * an index into self.power_state_graph.nodes identifying this 
+                 power state.
+               * magnitude of power change (to tweak the energy estimation).
 
-        1. Find any of the most prominent features.  Then check if
-           other prominent features are present within self.max_duration.
 
-        2. If they are then we have identified appliance.  Then track each power
-           state (to get an accurate measure of energy used per run).
+        Handle overlapping power states
+        -------------------------------
+
+        Several (mutually exclusive) options:
+          1) Simplest (do this first): identify groups of overlapping
+             candidate power states.  For each group, delete all but
+             the most confident. (should we only consider each class
+             of power state alone? If so then what about overlaps
+             between different types of power state? Maybe simplest to
+             consider overlaps between any type of power state and
+             select only the most confident?)
+          2) I think Hart mentioned something about modifying the Viterbi 
+             algorithm to handle inserted symbols.  Check this out.
+          3) Or for each segment with overlaps: enumerate all possible "detours"
+             through this segment using non-overlapping candidates, and then find
+             the most likely route *for each overlapping segment*, and select that one.
+
+
+        Decoding
+        --------
+        For two state appliances we're done.
+
+        For multi-state appliances: enumerate every permutation and
+        calculate the joint prob of the Markov chain.
+
         """
 
     def refine(self, aggregate):
