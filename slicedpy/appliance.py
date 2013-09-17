@@ -86,12 +86,16 @@ class Appliance(object):
                     found_match = True
                     break
             if not found_match:
+                ps = sps.prepare_for_power_state_graph()
                 self.power_state_graph.add_node(sps)
-                ps = sps
 
             # Add edge
             self.power_state_graph.add_edge(prev_ps, ps)
             prev_ps = ps
+
+        # Update count_per_run GMM for each power state:
+        for ps in self.power_state_graph.nodes()[1:]:
+            ps.save_count_per_run()
 
     def disaggregate(self, aggregate, pwr_sgmnts, decays, spike_histogram):
         """Find all possible single power states

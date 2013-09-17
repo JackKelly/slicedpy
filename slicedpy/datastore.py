@@ -31,8 +31,10 @@ class DataStore(object):
         """Appends `new_data` to `self.data` and fits model.
 
         Args:
-          * new_data (np.ndarray)
+          * new_data (np.ndarray or float or int)
         """
+        if isinstance(new_data, (float, int)):
+            new_data = np.array([new_data])
         self.history.append(self.data.size)
         self.data = np.append(self.data, new_data, axis=0)
 
@@ -47,6 +49,12 @@ class DataStore(object):
                 self.model.fit(self.data)
             else:
                 raise
+
+    def extend(self, other):
+        if self.n_columns != other.n_columns:
+            raise Exception('self.n_columns != other.n_columns')
+        self.history.extend(other.history)
+        self.append(other.data)
 
     def plot(self, ax, hist_color='grey', model_color='b'):
         """Plots comparison of data histogram and model.
