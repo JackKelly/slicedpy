@@ -2,6 +2,7 @@ from __future__ import print_function, division
 from bunch import Bunch
 import copy
 from slicedpy.normal import Normal
+from slicedpy.datastore import DataStore
 import matplotlib.dates as mdates
 import numpy as np
 
@@ -23,7 +24,7 @@ class PowerState(Bunch):
         * count_per_run = DataStore (GMM): number of times this power state is seen per run 
 
     """
-    def __init__(self, **kwds):
+    def __init__(self,  **kwds):
         super(PowerState, self).__init__(**kwds)
 
     def similar(self, other):

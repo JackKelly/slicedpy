@@ -23,7 +23,8 @@ class DataStore(object):
         self.clear()
 
     def clear(self):
-        self.data = np.empty((0, self.n_columns))
+        shape = (0, self.n_columns) if self.n_columns > 1 else (0,)
+        self.data = np.empty(shape)
         self.history = []
 
     def append(self, new_data):
