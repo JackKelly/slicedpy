@@ -7,6 +7,7 @@ class DataStore(object):
     Attributes:
       * data (np.ndarray)
       * history (list): indices into `data` recording when `append` is called.
+      * model: object for estimating statistical model of data
     """
 
     def __init__(self, n_columns=1, model=None):

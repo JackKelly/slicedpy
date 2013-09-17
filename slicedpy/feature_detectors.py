@@ -9,6 +9,7 @@ import matplotlib.dates as mdates
 import math, datetime
 from slicedpy.normal import Normal
 from slicedpy.powerstate import PowerState
+from slicedpy.datastore import DataStore
 from slicedpy import utils
 from pda.channel import _indicies_of_periods
 
@@ -355,6 +356,11 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
       * initial_window_size (int): number of samples
       * look_ahead (int): number of samples
       * max_ptp (float): max peak to peak in watts
+
+    Returns:
+      * a pd.DataFrame with columns:
+        * ``end``
+        * ``power_stats``: a DataStore(model=Normal())
     """
     watts = series.values
 
@@ -402,8 +408,10 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
             end_of_ps):
             # We've come to the end of a candidate power segment
             idx.append(series.index[ps_start_i])
+            ds = DataStore(model=Normal())
+            ds.append(ps)
             power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                 'power_stats': Normal(ps)})
+                                 'power_stats': ds})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
@@ -542,8 +550,13 @@ def merge_features(pwr_sgmnts, decays, spike_histogram):
     """Associate features with each other to produce a list of 
     "signature power states".
 
+    Args:
+      * pwr_sgmnts: pd.DataFrame with columns 'end' and 'power_stats'
+      * decays: pd.DataFrame
+      * spike_histogram: pd.DataFrame
+
     Returns:
-        List of PowerStates.  Each records:
+      List of PowerStates.  Each records:
         * start: datetime of start of each power state
         * end: datetime of end of each power state
         * power_stats (Normal)

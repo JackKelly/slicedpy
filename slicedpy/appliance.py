@@ -27,11 +27,12 @@ class Appliance(object):
         # Now fuse features: i.e. associate features with each other
         # to come up with "signature power states".
         sig_power_states = fd.merge_features(pwr_sgmnts, decays, spike_histogram)
-        return sig_power_states
 
         # Now take the sequence of sig power states and merge these into
-        # the set of unique power states we keep for each appliance.
-        ##### self.update_power_state_graph(sig_power_states)
+        # the set (list) of unique power states we keep for each appliance.
+        self.update_power_state_graph(sig_power_states)
+#        self.plot_power_state_graph()
+        return
         # Just figure out which power segments are
         # similar based just on power.  Don't bother trying to split
         # each power state based on spike histogram yet.
@@ -39,14 +40,7 @@ class Appliance(object):
         # self.power_state_graph node 0 is 'off'
         # If power never drops to 0W then self.power_state_graph and a node PowerState('standby')
         # and we should never be able to enter 'off' state??
-        # each PowerState has these member variables:
-        #   * duration: DataStore (GMM)
-        #   * power: DataStore (Normal)
-        #   * decay: DataStore (GMM)
-        #   * spike_histogram: 2D DataStore (GMM), one col per bin 
-        #     (don't bother recording bin edges, assume these remain constant
-        #      in fact, put bin edges in a config.py file)
-        #   * count_per_run = DataStore (GMM): number of times this power state is seen per run 
+        # each PowerState has these member variables [see PowerState class]:
 
         # Graph edges:
         #   * diff between power segment mean: DataStore (GMM), 
@@ -74,6 +68,52 @@ class Appliance(object):
         #   would select the most prominent features for free (e.g. a
         #   decision tree)).  i.e. features which are always present;
         #   then rank by saliency.
+
+    def update_power_state_graph(self, sig_power_states):
+        """
+        Args:
+          ``sig_power_states`` (list of PowerStates)
+        """
+
+    # Repurpose this old code...
+    #def merge_pwr_sgmnts(signature_pwr_segments):
+        """
+        THIS FUNCTION IS CURRENTLY BROKEN PENDING REFACTORING!!!
+
+        Merge signature :class:`PowerSegment`s into a list of 
+        unique :class:`PowerState`s.
+
+        Args:
+          * signature_pwr_segments (list of :class:`PowerSegments`; each with a 
+            ``start``, ``end``, ``mean``, ``var``, ``size``)
+
+        Returns:
+          ``unique_pwr_states``, ``mapped_sig_pwr_sgmnts``
+          * ``unique_pwr_states`` is a list of unique :class:`PowerState`s
+          * ``mapped_sig_pwr_sgmnts`` is a copy of ``signature_pwr_segments``
+            where each item has an additional field ``power_state`` (int) 
+            which is the index into ``unique_pwr_states`` for that power segment.
+            That is, the ``power_state`` field maps from the power segment to
+            a single power state.
+        """
+
+        unique_pwr_states = []
+        mapped_sig_pwr_sgmnts = copy.copy(signature_pwr_segments)
+        for sps_i, sps in enumerate(signature_pwr_segments):
+            match_found = False
+            for ups_i, ups in enumerate(unique_pwr_states):
+                if spstats.similar_mean(sps, ups): 
+                    mean_ups = spstats.rough_mean_of_two_normals(sps, ups)
+                    unique_pwr_states[ups_i] = PowerState(mean_ups)
+                    match_found = True
+                    mapped_sig_pwr_sgmnts[sps_i].power_state = ups_i
+                    break
+            if not match_found:
+                new_ps = PowerState(sig_power_segment=sps)
+                unique_pwr_states.append(new_ps)
+                mapped_sig_pwr_sgmnts[sps_i].power_state = len(unique_pwr_states)-1
+
+        return unique_pwr_states, mapped_sig_pwr_sgmnts
 
 
     def disaggregate(self, aggregate, pwr_sgmnts, decays, spike_histogram):

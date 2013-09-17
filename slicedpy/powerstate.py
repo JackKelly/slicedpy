@@ -11,16 +11,35 @@ class PowerState(Bunch):
     spinning.
 
     Attributes:
+        * start: datetime of start of each power state
+        * end: datetime of end of each power state
+        * duration: DataStore (GMM)
+        * power: DataStore (Normal)
+        * slope: DataStore (GMM)
+        * intercept (float)
+        * spike_histogram: 2D DataStore (GMM), one col per bin 
+          (don't bother recording bin edges, assume these remain constant
+           in fact, put bin edges in a config.py file)
+        * count_per_run = DataStore (GMM): number of times this power state is seen per run 
+
     """
     def __init__(self, **kwds):
         super(PowerState, self).__init__(**kwds)
 
+    def similar(self, other):
+        return self.power.model.similar_mean(other.power.model)
+
+    def merge(self, other):
+        """Merges ``other`` with ``self``."""
+        pass
+
     def plot(self, ax, color='k'):
         ax.plot([self.start, self.end], 
-                [self.power_stats.mean, self.power_stats.mean], color=color)
+                [self.power.model.mean, self.power.model.mean], color=color)
         
         if self.__dict__.get('slope') is not None:
-            print("plotting slope: intercept=", self.intercept, "slope=", self.slope)
+            print("plotting slope: intercept=", self.intercept, 
+                  "slope=", self.slope)
             curve = lambda x, c, m: c + (m / x)
             num_start = mdates.date2num(self.start)
             num_end = num_start + (10 / mdates.SEC_PER_DAY)
@@ -29,44 +48,3 @@ class PowerState(Bunch):
             ax.plot(X, 
                     curve((x-x[0])+1, self.intercept, self.slope),
                     color=color)
-
-
-
-def merge_pwr_sgmnts(signature_pwr_segments):
-    """
-    THIS FUNCTION IS CURRENTLY BROKEN PENDING REFACTORING!!!
-
-    Merge signature :class:`PowerSegment`s into a list of 
-    unique :class:`PowerState`s.
-
-    Args:
-      * signature_pwr_segments (list of :class:`PowerSegments`; each with a 
-        ``start``, ``end``, ``mean``, ``var``, ``size``)
-
-    Returns:
-      ``unique_pwr_states``, ``mapped_sig_pwr_sgmnts``
-      * ``unique_pwr_states`` is a list of unique :class:`PowerState`s
-      * ``mapped_sig_pwr_sgmnts`` is a copy of ``signature_pwr_segments``
-        where each item has an additional field ``power_state`` (int) 
-        which is the index into ``unique_pwr_states`` for that power segment.
-        That is, the ``power_state`` field maps from the power segment to
-        a single power state.
-    """
-
-    unique_pwr_states = []
-    mapped_sig_pwr_sgmnts = copy.copy(signature_pwr_segments)
-    for sps_i, sps in enumerate(signature_pwr_segments):
-        match_found = False
-        for ups_i, ups in enumerate(unique_pwr_states):
-            if spstats.similar_mean(sps, ups): 
-                mean_ups = spstats.rough_mean_of_two_normals(sps, ups)
-                unique_pwr_states[ups_i] = PowerState(mean_ups)
-                match_found = True
-                mapped_sig_pwr_sgmnts[sps_i].power_state = ups_i
-                break
-        if not match_found:
-            new_ps = PowerState(sig_power_segment=sps)
-            unique_pwr_states.append(new_ps)
-            mapped_sig_pwr_sgmnts[sps_i].power_state = len(unique_pwr_states)-1
-
-    return unique_pwr_states, mapped_sig_pwr_sgmnts
