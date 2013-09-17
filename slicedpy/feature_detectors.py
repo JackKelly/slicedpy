@@ -360,7 +360,7 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
     Returns:
       * a pd.DataFrame with columns:
         * ``end``
-        * ``power_stats``: a DataStore(model=Normal())
+        * ``power``: a DataStore(model=Normal())
     """
     watts = series.values
 
@@ -411,7 +411,7 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
             ds = DataStore(model=Normal())
             ds.append(ps)
             power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                 'power_stats': ds})
+                                 'power': ds})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
@@ -556,20 +556,13 @@ def merge_features(pwr_sgmnts, decays, spike_histogram):
       * spike_histogram: pd.DataFrame
 
     Returns:
-      List of PowerStates.  Each records:
-        * start: datetime of start of each power state
-        * end: datetime of end of each power state
-        * power_stats (Normal)
-        * slope (float)
-        * intercept (float)
-        * spike_histogram (2D np.ndarray): one col per bin
-
+      List of PowerStates.  See PowerState class for a list of attributes.
     """
     merged = []
     for start, pwr_seg in pwr_sgmnts.iterrows():
         pwr_state = PowerState(start=start, 
                                end=pwr_seg['end'],
-                               power_stats=pwr_seg['power_stats'])
+                               power=pwr_seg['power'])
 
         # DECAYS:
         # Assume decays to be within some constant number of
