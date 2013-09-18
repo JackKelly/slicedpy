@@ -37,16 +37,25 @@ class DataStore(object):
             new_data = np.array([new_data])
         self.history.append(self.data.size)
         self.data = np.append(self.data, new_data, axis=0)
+        if self.data.shape[0] == 0:
+            return # cannot fit model when we have no data!
+
+        def pad_single_value(data):
+            # helper function. We cannot fit model to a single value
+            # so if we have a single value then repeat it twice.
+            return np.append(data, data, axis=0) if data.shape[0] == 1 else data
 
         # Fit model...
         if self.model is None:
             raise Exception('self.model is None! '
                             ' It must be set before calling fit()!')
         try:
-            self.model.partial_fit(new_data)
+            data = pad_single_value(new_data)
+            self.model.partial_fit(data)
         except AttributeError as e:
             if str(e).find("""object has no attribute 'partial_fit'"""):
-                self.model.fit(self.data)
+                data = pad_single_value(self.data)
+                self.model.fit(data)
             else:
                 raise
 

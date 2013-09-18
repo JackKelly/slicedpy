@@ -77,25 +77,26 @@ class Appliance(object):
           ``sig_power_states`` (list of PowerStates)
         """
         
-        prev_ps = self.power_state_graph.nodes()[0]
+        prev_ps = 'off'
         for sps in sig_power_states:
             found_match = False
-            for ps in self.power_state_graph.nodes()[1:]:
-                if ps.similar(sps):
-                    ps.merge(sps)
+            for ps in self.power_state_graph.nodes():
+                if ps != 'off' and ps.similar(sps):
+                    ps.merge(sps.prepare_for_power_state_graph())
                     found_match = True
                     break
             if not found_match:
                 ps = sps.prepare_for_power_state_graph()
-                self.power_state_graph.add_node(sps)
+                self.power_state_graph.add_node(ps)
 
             # Add edge
             self.power_state_graph.add_edge(prev_ps, ps)
             prev_ps = ps
 
         # Update count_per_run GMM for each power state:
-        for ps in self.power_state_graph.nodes()[1:]:
-            ps.save_count_per_run()
+        for ps in self.power_state_graph.nodes():
+            if ps != 'off':
+                ps.save_count_per_run()
 
     def disaggregate(self, aggregate, pwr_sgmnts, decays, spike_histogram):
         """Find all possible single power states

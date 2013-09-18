@@ -35,21 +35,19 @@ class PowerState(Bunch):
         new.count_per_run = DataStore(model=GMM())
         new.current_count_per_run = 1
 
-        duration = (self.end - self.start).total_seconds()
-        new.duration = DataStore(model=GMM())
-        new.duration.append(duration)
-
-        new.slope = DataStore(model=GMM())
-        new.slope.append(self.slope)
-
-        new.intercept = DataStore(model=GMM())
-        new.intercept.append(self.intercept)
-
-        new.spike_histogram = DataStore(n_columns=7, model=GMM())
-        new.spike_histogram.append(self.spike_histogram)
-
+        self.duration = (self.end - self.start).total_seconds()
         del new.start
         del new.end
+
+        # Convert from scalars to DataStores:
+        for attr, n_columns in [('duration', 1), 
+                                ('slope', 1), 
+                                ('intercept', 1),
+                                ('spike_histogram', 8)]:
+
+            if self.__dict__.get(attr) is not None:
+                new.__dict__[attr] = DataStore(n_columns=n_columns, model=GMM())
+                new.__dict__[attr].append(self.__dict__[attr])
 
         return new
 
@@ -62,10 +60,16 @@ class PowerState(Bunch):
 
     def merge(self, other):
         """Merges ``other`` into ``self``."""
+        print("Merging {:.2f}W".format(self.power.model.mean))
         self.current_count_per_run += 1
+        optional_attributes = ['slope', 'intercept']
         for attribute in ['duration', 'power', 'slope', 'intercept', 
                           'spike_histogram', 'count_per_run']:
-            eval('self.{attr}.extend(other.{attr})'.format(attr=attribute))
+            try:
+                self.__dict__[attribute].extend(other.__dict__[attribute])
+            except KeyError as e:
+                if str(e).strip('\'') not in optional_attributes:
+                    raise
 
     def plot(self, ax, color='k'):
         ax.plot([self.start, self.end], 
