@@ -3,6 +3,16 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import Image
 
+"""
+Requires:
+  * networkx
+  * matplotlib
+  * pydot.  To install: 
+    sudo pip uninstall pyparsing pydot
+    sudo pip install pyparsing==1.5.7
+    sudo pip install pydot
+"""
+
 class Appliance(object):
 
     def __init__(self):
