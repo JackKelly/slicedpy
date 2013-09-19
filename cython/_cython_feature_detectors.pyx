@@ -65,7 +65,7 @@ def steady_states(series,
         pd.DataFrame.  Each row is a steady state.  Columns:
            * index: datetime of start of steady state
            * end: datetime of end of steady state
-           * power_stats (slicedpy.Normal): summary stats describing power
+           * power (slicedpy.Normal): summary stats describing power
     """
 
     cdef:
@@ -94,7 +94,7 @@ def steady_states(series,
             if (i - ss_start_i) >= min_n_samples:
                 idx.append(series.index[ss_start_i])
                 ss.append({'end': series.index[i-1],
-                           'power_stats': Normal(watts[ss_start_i:i])})
+                           'power': Normal(watts[ss_start_i:i])})
 
             ss_start_i = i
             ss_min = ss_max = watts[ss_start_i]
@@ -102,7 +102,7 @@ def steady_states(series,
     if (i - ss_start_i) >= min_n_samples:
         idx.append(series.index[ss_start_i])
         ss.append({'end': series.index[i-1],
-                   'power_stats': Normal(watts[ss_start_i:i])})
+                   'power': Normal(watts[ss_start_i:i])})
             
     return pd.DataFrame(ss, index=idx)
 
@@ -124,7 +124,7 @@ def mean_steady_states(series,
         pd.DataFrame.  Each row is a steady state.  Columns:
            * index: datetime of start of steady state
            * end: datetime of end of steady state
-           * power_stats (slicedpy.Normal): summary stats describing power
+           * power (slicedpy.Normal): summary stats describing power
     """
 
     cdef:
@@ -149,7 +149,7 @@ def mean_steady_states(series,
             if ss_length >= min_n_samples:
                 idx.append(series.index[ss_start_i])
                 ss.append({'end': series.index[i-1],
-                           'power_stats': Normal(watts[ss_start_i:i])})
+                           'power': Normal(watts[ss_start_i:i])})
 
             ss_start_i = i
             accumulator = ss_mean = watts[ss_start_i]
@@ -160,7 +160,7 @@ def mean_steady_states(series,
     if (i - ss_start_i) >= min_n_samples:
         idx.append(series.index[ss_start_i])
         ss.append({'end': series.index[i-1],
-                   'power_stats': Normal(watts[ss_start_i:i])})
+                   'power': Normal(watts[ss_start_i:i])})
             
     return pd.DataFrame(ss, index=idx)
 
@@ -184,7 +184,7 @@ def sliding_mean_steady_states(series,
         pd.DataFrame.  Each row is a steady state.  Columns:
            * index: datetime of start of steady state
            * end: datetime of end of steady state
-           * power_stats (slicedpy.Normal): summary stats describing power
+           * power (slicedpy.Normal): summary stats describing power
     """
 
     cdef:
@@ -210,7 +210,7 @@ def sliding_mean_steady_states(series,
             if ss_length >= min_n_samples:
                 idx.append(series.index[ss_start_i])
                 ss.append({'end': series.index[i-1],
-                           'power_stats': Normal(watts[ss_start_i:i])})
+                           'power': Normal(watts[ss_start_i:i])})
             ss_start_i = i
             accumulator = ss_mean = watts[ss_start_i]
         else:
@@ -224,6 +224,6 @@ def sliding_mean_steady_states(series,
     if (i - ss_start_i) >= min_n_samples:
         idx.append(series.index[ss_start_i])
         ss.append({'end': series.index[i-1],
-                   'power_stats': Normal(watts[ss_start_i:i])})
+                   'power': Normal(watts[ss_start_i:i])})
             
     return pd.DataFrame(ss, index=idx)

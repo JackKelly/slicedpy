@@ -18,7 +18,7 @@ def plot_steady_states(ax, states, offset=0,
     line = None
     for start, val in states.iterrows():
         end = val['end']
-        mean = val['power_stats'].mean + offset
+        mean = val['power'].mean + offset
         line, = ax.plot([start, end], [mean, mean], color=color, 
                      linewidth=2, alpha=0.6)
     if line is not None:

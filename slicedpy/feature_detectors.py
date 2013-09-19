@@ -324,7 +324,7 @@ def relative_deviation_power_sgmnts(
             if (ps_end_i - ps_start_i) / window_size > 1:
                 idx.append(series.index[ps_start_i])
                 power_sgmnts.append({'end': series.index[ps_end_i-1],
-                                     'power_stats': Normal(ps)})
+                                     'power': Normal(ps)})
             ps_start_i = ps_end_i
         ps_end_i = next_chunk_end_i
 
@@ -408,10 +408,10 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
             end_of_ps):
             # We've come to the end of a candidate power segment
             idx.append(series.index[ps_start_i])
-            ds = DataStore(model=Normal())
-            ds.append(ps)
+            # ds = DataStore(model=Normal())
+            # ds.append(ps)
             power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                 'power': ds})
+                                 'power': Normal(ps)})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
@@ -452,7 +452,7 @@ def min_max_two_halves_power_sgmnts(series,
                 # We've come to the end of a candidate power segment
                 idx.append(series.index[ps_start_i])
                 power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                     'power_stats': Normal(ps)})
+                                     'power': Normal(ps)})
                 ps_start_i = ps_end_i
                 ps_end_i = ps_start_i + initial_window_size
         else:
@@ -476,7 +476,7 @@ def mean_chunk_power_sgmnts(series, max_deviation=10, window_size=10):
             # We've come to the end of a candidate power segment
             idx.append(series.index[ps_start_i])
             power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                 'power_stats': Normal(ps)})
+                                 'power': Normal(ps)})
             ps_start_i = ps_end_i
 
     return pd.DataFrame(power_sgmnts, index=idx)
@@ -535,7 +535,7 @@ def minimise_mean_deviation_power_sgmnts(series,
             # End of power segment
             idx.append(series.index[ps_start_i])
             power_sgmnts.append({'end': series.index[ps_end_i-1],
-                                 'power_stats': Normal(ps)})
+                                 'power': Normal(ps)})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
 
@@ -551,7 +551,7 @@ def merge_features(pwr_sgmnts, decays, spike_histogram):
     "signature power states".
 
     Args:
-      * pwr_sgmnts: pd.DataFrame with columns 'end' and 'power_stats'
+      * pwr_sgmnts: pd.DataFrame with columns 'end' and 'power'
       * decays: pd.DataFrame
       * spike_histogram: pd.DataFrame
 

@@ -1,13 +1,13 @@
 import feature_detectors as fd
 import networkx as nx
-import matplotlib.pyplot as plt
 import Image
+import pandas as pd
 
 """
 Requires:
   * networkx
   * matplotlib
-  * pydot.  To install: 
+  * pydot.  To install (adapted from http://stackoverflow.com/a/17902926/732596)
     sudo pip uninstall pyparsing pydot
     sudo pip install pyparsing==1.5.7
     sudo pip install pydot
@@ -40,18 +40,10 @@ class Appliance(object):
         sig_power_states = fd.merge_features(pwr_sgmnts, decays, spike_histogram)
 
         # Now take the sequence of sig power states and merge these into
-        # the set (list) of unique power states we keep for each appliance.
+        # the set of unique power states for each appliance.
         self.update_power_state_graph(sig_power_states)
-        return sig_power_states
-        # Just figure out which power segments are
-        # similar based just on power.  Don't bother trying to split
-        # each power state based on spike histogram yet.
-        # self.power_state_graph is NetworkX DiGraph.
-        # self.power_state_graph node 0 is 'off'
-        # If power never drops to 0W then self.power_state_graph and a node PowerState('standby')
-        # and we should never be able to enter 'off' state??
-        # each PowerState has these member variables [see PowerState class]:
 
+        # STILL TO DO (if necessary):
         # Graph edges:
         #   * diff between power segment mean: DataStore (GMM), 
         #   * forward diff: DataStore (GMM) <- actually, maybe don't bother with this
@@ -78,10 +70,13 @@ class Appliance(object):
         #   would select the most prominent features for free (e.g. a
         #   decision tree)).  i.e. features which are always present;
         #   then rank by saliency.
+        return sig_power_states
 
     def update_power_state_graph(self, sig_power_states):
-        """Take the list of sig_power_states and merge these 
-        into self.power_state_graph
+        """Take the list of sig_power_states and merge these into
+        self.power_state_graph. Just figure out which power segments
+        are similar based just on power.  Don't bother trying to split
+        each power state based on spike histogram (yet).
 
         Args:
           ``sig_power_states`` (list of PowerStates)
@@ -116,11 +111,42 @@ class Appliance(object):
         im = Image.open(png_filename)
         im.show()
 
-    def disaggregate(self, aggregate, pwr_sgmnts, decays, spike_histogram):
-        """Find all possible single power states
+    def disaggregate(self, pwr_sgmnts, decays, spike_histogram):
+        """Find all single power states
         -------------------------------------
 
-        Each appliance has a set of power states.  For each power state we 
+        Each appliance has a set of 'essential' power states.  Take the top 3
+        transitions (edges) between essential power states (ranked by 
+        max(np.abs(node.predecessors().power.get_model().mean - 
+                   node.power.get_model().mean)))
+
+        Find these top 3 edges, within the max time between these
+        power states.  Remember that these might not be consecutive.
+        Then select only those where all three appear within
+        self.duration.data.max() of each other.  These clusters are our first guess.
+
+        Then search backwards and forwards from these clusters to
+        "fill out" other power states.  Score each power state based
+        on way in, way out, duration, decay, spike hist.
+
+        ------------- THINKING OUT LOUD:
+        Could use decision trees to recognise each power state (or maybe the 
+        "top K(3?)" states).  These trees would be trained across all available
+        appliances so they can find discriminative features (e.g. it should
+        find that spike histogram is the best way to find washing machine
+        signatures).
+
+        QUESTION: During disaggregation, the discrete power segments
+        we extract from the aggregate data will not correspond in
+        length to the one we learnt during training.  So do we ignore duration
+        and exit-magnitude?  That's probably a bad idea. Instead perhaps we need
+        to somehow read the decision tree backwards?!?  i.e. we say that we want
+        to find a specific class of power state, so which features should we find?
+        
+
+        -------------- OLD TECHNIQUE:
+
+        For each power state we 
         have a set of "ways in" and a set of "ways out".  These "ways in" and
         "ways out" comprise the *differences between* power states (like Hart's
         edge detector).  Find all possible single power states (don't worry
@@ -130,13 +156,24 @@ class Appliance(object):
         
         For each power state in self.power_state_graph:
           1) Find all possible "ways in": find all power state transitions 
-             between the min and max of any "ways in" in the aggregate. (If we
+             between the min and max of any "ways in" in the aggregate, within 
+             the max time between two power states. (If we
              want to be really permissive then also find candidates based just
              on decays / spike histogram: e.g. if
              this state starts with a ramp then find all ramps consistent with
              this state and add / merge these with "ways in" found just from
              power state transitions... but let's not do that to start with; just
              find candidates based on power state transitions).
+
+        """
+
+        # Get differences between power segment means in aggregate
+        means = [row['power'].mean for i, row in pwr_sgmnts.iterrows()]
+        ps_means = pd.Series(means, index=pwr_sgmnts.index)
+        ps_means_diff = ps_means.diff()[1:] # crop off the first NaN
+        
+
+        """
           2) For each "candidate way in", find all power state transitions
              between the min and max of any "ways out", within the min and
              max duration of the power state.  If there are no "ways out" for
