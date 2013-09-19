@@ -6,6 +6,7 @@
 profile.txt
 *.so
 *.h5
+power_state_graph.png
 
 build/
 _build/

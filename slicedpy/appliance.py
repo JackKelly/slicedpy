@@ -1,6 +1,7 @@
 import feature_detectors as fd
-from powerstate import PowerState
 import networkx as nx
+import matplotlib.pyplot as plt
+import Image
 
 class Appliance(object):
 
@@ -31,8 +32,7 @@ class Appliance(object):
         # Now take the sequence of sig power states and merge these into
         # the set (list) of unique power states we keep for each appliance.
         self.update_power_state_graph(sig_power_states)
-#        self.plot_power_state_graph()
-        return
+        return sig_power_states
         # Just figure out which power segments are
         # similar based just on power.  Don't bother trying to split
         # each power state based on spike histogram yet.
@@ -93,10 +93,18 @@ class Appliance(object):
             self.power_state_graph.add_edge(prev_ps, ps)
             prev_ps = ps
 
+        self.power_state_graph.add_edge(prev_ps, 'off')
+
         # Update count_per_run GMM for each power state:
         for ps in self.power_state_graph.nodes():
             if ps != 'off':
                 ps.save_count_per_run()
+
+    def draw_power_state_graph(self, png_filename='power_state_graph.png'):
+        p = nx.to_pydot(self.power_state_graph)
+        p.write_png(png_filename)
+        im = Image.open(png_filename)
+        im.show()
 
     def disaggregate(self, aggregate, pwr_sgmnts, decays, spike_histogram):
         """Find all possible single power states

@@ -87,3 +87,6 @@ class PowerState(Bunch):
             ax.plot(X, 
                     curve((x-x[0])+1, self.intercept, self.slope),
                     color=color)
+
+    def __str__(self):
+        return "power={:.1f}W".format(self.power.get_model().mean)
