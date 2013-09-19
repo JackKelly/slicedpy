@@ -56,11 +56,11 @@ class PowerState(Bunch):
         self.current_count_per_run = 0
 
     def similar(self, other):
-        return self.power.model.similar_mean(other.power.model)
+        return self.power.get_model().similar_mean(other.power.get_model())
 
     def merge(self, other):
         """Merges ``other`` into ``self``."""
-        print("Merging {:.2f}W".format(self.power.model.mean))
+        print("Merging {:.2f}W".format(self.power.get_model().mean))
         self.current_count_per_run += 1
         optional_attributes = ['slope', 'intercept']
         for attribute in ['duration', 'power', 'slope', 'intercept', 
@@ -73,7 +73,8 @@ class PowerState(Bunch):
 
     def plot(self, ax, color='k'):
         ax.plot([self.start, self.end], 
-                [self.power.model.mean, self.power.model.mean], color=color)
+                [self.power.get_model().mean, self.power.get_model().mean], 
+                color=color)
         
         if self.__dict__.get('slope') is not None:
             print("plotting slope: intercept=", self.intercept, 

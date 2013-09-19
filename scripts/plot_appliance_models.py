@@ -10,6 +10,6 @@ sig_power_states = app.train_on_single_example(c)
 
 fig, ax = plt.subplots()
 c.plot(ax)
-for ps in sig_power_states:
-    ps.plot(ax)
+# for ps in sig_power_states:
+#    ps.plot(ax)
 plt.show()

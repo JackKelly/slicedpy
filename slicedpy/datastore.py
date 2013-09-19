@@ -26,6 +26,7 @@ class DataStore(object):
         shape = (0, self.n_columns) if self.n_columns > 1 else (0,)
         self.data = np.empty(shape)
         self.history = []
+        self._model_is_stale = False
 
     def append(self, new_data):
         """Appends `new_data` to `self.data` and fits model.
@@ -35,29 +36,34 @@ class DataStore(object):
         """
         if isinstance(new_data, (float, int)):
             new_data = np.array([new_data])
+        elif len(new_data) == 0:
+            return
+
         self.history.append(self.data.size)
         self.data = np.append(self.data, new_data, axis=0)
+        self._model_is_stale = True
+
+    def get_model(self):
+        if self._model_is_stale:
+            self.fit()
+        return self.model
+
+    def fit(self):
         if self.data.shape[0] == 0:
             return # cannot fit model when we have no data!
-
-        def pad_single_value(data):
-            # helper function. We cannot fit model to a single value
-            # so if we have a single value then repeat it twice.
-            return np.append(data, data, axis=0) if data.shape[0] == 1 else data
 
         # Fit model...
         if self.model is None:
             raise Exception('self.model is None! '
                             ' It must be set before calling fit()!')
-        try:
-            data = pad_single_value(new_data)
-            self.model.partial_fit(data)
-        except AttributeError as e:
-            if str(e).find("""object has no attribute 'partial_fit'"""):
-                data = pad_single_value(self.data)
-                self.model.fit(data)
-            else:
-                raise
+
+        # We cannot fit model to a single value
+        # so if we have a single value then repeat it twice.
+        data = (np.append(self.data, self.data, axis=0) 
+                if self.data.shape[0] == 1 
+                else self.data)
+        self.model.fit(data)
+        self._model_is_stale = False
 
     def extend(self, other):
         if self.n_columns != other.n_columns:
