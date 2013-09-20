@@ -55,12 +55,12 @@ class PowerState(Bunch):
         fv = [self.duration.data[0]]
 
         if self.__dict__.get('slope') is None:
-            fv.append(None)
+            fv.append(0)
         else:
             fv.append(self.slope.data[0])
 
         if self.spike_histogram.data.size == 0:
-            fv.extend([None]*8)
+            fv.extend([0]*8)
         else:
             fv.extend(self.spike_histogram.data[0,:].tolist())
         return fv

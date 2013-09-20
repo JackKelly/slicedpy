@@ -14,8 +14,16 @@ Requires:
 """
 
 class Appliance(object):
+    """
+    Attributes:
+      * label (str)
+      * power_state_graph (nx.DiGraph)
+      * feature_matrix (list of lists): used for training power state classifier
+      * feature_matrix_labels (list of refs to PowerStates)
+    """
 
-    def __init__(self):
+    def __init__(self, label=''):
+        self.label = label
         self.reset()
 
     def reset(self):
@@ -100,8 +108,7 @@ class Appliance(object):
             # Add edge
             self.power_state_graph.add_edge(prev_ps, ps)
 
-            # First element of feature vector is diff between
-            # this power state and prev power state
+            # SAVE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
             if prev_ps == 'off':
                 prev_mean_power = 0
             else:
@@ -110,6 +117,7 @@ class Appliance(object):
             fv = [mean_power_diff]
             fv.extend(sps_prepped.get_feature_vector())
             self.feature_matrix.append(fv)
+            self.feature_matrix_labels.append(ps)
 
             prev_ps = ps
 
@@ -128,7 +136,11 @@ class Appliance(object):
         im.show()
 
     def disaggregate(self, pwr_sgmnts, decays, spike_histogram):
-        """Find all single power states
+        """
+        BELOW ARE OLD NOTES.  SEE Disaggregator.disaggregate() for
+        latest ideas.
+
+        Find all single power states
         -------------------------------------
 
         Each appliance has a set of 'essential' power states.  Take the top 3
