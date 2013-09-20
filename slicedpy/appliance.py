@@ -21,6 +21,8 @@ class Appliance(object):
     def reset(self):
         self.power_state_graph = nx.DiGraph()
         self.power_state_graph.add_node('off')
+        self.feature_matrix = []
+        self.feature_matrix_labels = []
 
     def train_on_single_example(self, sig):
         """
@@ -85,19 +87,33 @@ class Appliance(object):
         prev_ps = 'off'
         for sps in sig_power_states:
             found_match = False
+            sps_prepped = sps.prepare_for_power_state_graph()
             for ps in self.power_state_graph.nodes():
                 if ps != 'off' and ps.similar(sps):
-                    ps.merge(sps.prepare_for_power_state_graph())
+                    ps.merge(sps_prepped)
                     found_match = True
                     break
             if not found_match:
-                ps = sps.prepare_for_power_state_graph()
-                self.power_state_graph.add_node(ps)
+                self.power_state_graph.add_node(sps_prepped)
+                ps = sps_prepped
 
             # Add edge
             self.power_state_graph.add_edge(prev_ps, ps)
+
+            # First element of feature vector is diff between
+            # this power state and prev power state
+            if prev_ps == 'off':
+                prev_mean_power = 0
+            else:
+                prev_mean_power = prev_ps.power.get_model().mean
+            mean_power_diff = ps.power.get_model().mean - prev_mean_power
+            fv = [mean_power_diff]
+            fv.extend(sps_prepped.get_feature_vector())
+            self.feature_matrix.append(fv)
+
             prev_ps = ps
 
+        # add 'off' edge
         self.power_state_graph.add_edge(prev_ps, 'off')
 
         # Update count_per_run GMM for each power state:

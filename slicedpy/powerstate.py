@@ -51,6 +51,20 @@ class PowerState(Bunch):
 
         return new
 
+    def get_feature_vector(self):
+        fv = [self.duration.data[0]]
+
+        if self.__dict__.get('slope') is None:
+            fv.append(None)
+        else:
+            fv.append(self.slope.data[0])
+
+        if self.spike_histogram.data.size == 0:
+            fv.extend([None]*8)
+        else:
+            fv.extend(self.spike_histogram.data[0,:].tolist())
+        return fv
+
     def save_count_per_run(self):
         self.count_per_run.append(np.array([self.current_count_per_run]))
         self.current_count_per_run = 0

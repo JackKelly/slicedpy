@@ -408,10 +408,10 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
             end_of_ps):
             # We've come to the end of a candidate power segment
             idx.append(series.index[ps_start_i])
-            # ds = DataStore(model=Normal())
-            # ds.append(ps)
+            ds = DataStore(model=Normal())
+            ds.append(ps)
             power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                 'power': Normal(ps)})
+                                 'power': ds})
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
