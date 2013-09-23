@@ -34,6 +34,7 @@ class PowerState(Bunch):
 
         new.count_per_run = DataStore(model=GMM())
         new.current_count_per_run = 1
+        new.essential = None
 
         self.duration = (self.end - self.start).total_seconds()
         del new.start

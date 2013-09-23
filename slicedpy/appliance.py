@@ -91,6 +91,13 @@ class Appliance(object):
         Args:
           ``sig_power_states`` (list of PowerStates)
         """
+
+        # If power state graph has only one node ('off') then
+        # this is the first training example.
+        first_example = len(self.power_state_graph.nodes()) == 1
+
+        prev_essential_nodes = [node for node in self.power_state_graph.nodes()
+                                if node != 'off' and node.essential]
         
         prev_ps = 'off'
         for sps in sig_power_states:
@@ -98,10 +105,19 @@ class Appliance(object):
             sps_prepped = sps.prepare_for_power_state_graph()
             for ps in self.power_state_graph.nodes():
                 if ps != 'off' and ps.similar(sps):
+                    try:
+                        prev_essential_nodes.remove(ps)
+                    except ValueError:
+                        pass
                     ps.merge(sps_prepped)
                     found_match = True
                     break
             if not found_match:
+                # If this is the first training example then mark
+                # all power states as 'essential', otherwise mark all new
+                # power states as not essential (because this power state 
+                # was not observed in any previous example).
+                sps_prepped.essential = first_example
                 self.power_state_graph.add_node(sps_prepped)
                 ps = sps_prepped
 
@@ -128,6 +144,11 @@ class Appliance(object):
         for ps in self.power_state_graph.nodes():
             if ps != 'off':
                 ps.save_count_per_run()
+
+        # Mark as unessential any nodes which were previously marked essential
+        # but which weren't encountered on this training example
+        for unessential_node in prev_essential_nodes:
+            unessential_node.essential = False
 
     def draw_power_state_graph(self, png_filename='power_state_graph.png'):
         p = nx.to_pydot(self.power_state_graph)
