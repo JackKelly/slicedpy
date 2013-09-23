@@ -370,6 +370,14 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
     power_sgmnts = []
     half_window = int(initial_window_size / 2)
     n = watts.size - look_ahead
+
+    def append_power_segment(ps_start_i, ps_end_i, ps):
+        idx.append(series.index[ps_start_i])
+        ds = DataStore(model=Normal())
+        ds.append(ps)
+        power_sgmnts.append({'end': series.index[ps_end_i-1], 
+                             'power': ds})
+
     while True:
         if ps_end_i >= n:
             break
@@ -407,15 +415,15 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
             ahead.mean() > ps.max() + max_deviation or
             end_of_ps):
             # We've come to the end of a candidate power segment
-            idx.append(series.index[ps_start_i])
-            ds = DataStore(model=Normal())
-            ds.append(ps)
-            power_sgmnts.append({'end': series.index[ps_end_i-1], 
-                                 'power': ds})
+            append_power_segment(ps_start_i, ps_end_i, ps)
             ps_start_i = ps_end_i
             ps_end_i = ps_start_i + initial_window_size
         else:
             ps_end_i += look_ahead
+
+    # add last power segment, if necessary
+    if ps_end_i > ps_start_i + initial_window_size:
+        append_power_segment(ps_start_i, ps_end_i, ps)
 
     return pd.DataFrame(power_sgmnts, index=idx)
 

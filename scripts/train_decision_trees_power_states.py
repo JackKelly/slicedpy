@@ -44,7 +44,7 @@ kettle_app.train_on_single_example(k1)
 
 ######### TRAIN DECISION TREE
 disag = Disaggregator()
-disag.train([wm_app, tv_app, toaster_app, kettle_app])
+disag.train_decision_tree([wm_app, tv_app, toaster_app, kettle_app])
 disag.draw_tree()
 
 plt.show()

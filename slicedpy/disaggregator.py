@@ -33,7 +33,11 @@ class Disaggregator(object):
         self.appliances = []
         self.power_state_decision_tree = tree.DecisionTreeClassifier()
 
-    def train(self, appliances):
+    ##########################################################################
+    # DECISION TREES
+    ##########################################################################
+
+    def train_decision_tree(self, appliances):
         """
         Args:
           * appliances (list of Appliance objects)
