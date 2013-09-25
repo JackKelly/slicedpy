@@ -102,7 +102,7 @@ class Normal(Bunch):
                                     stats.t.cdf(-math.fabs(t_stat), df))
         return two_tailed_p_value
 
-    def similar_mean(self, other, p_value_threshold=0.05, mean_delta_threshold=5):
+    def similar_mean(self, other, p_value_threshold=0.000000001, mean_delta_threshold=5):
         """Returns True is self and other have similar means."""
         return (math.fabs(self.mean - other.mean) < mean_delta_threshold or
                 self.welch_ttest(other) > p_value_threshold)
