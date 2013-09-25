@@ -49,19 +49,19 @@ class DataStore(object):
         return self.model
 
     def fit(self):
-        if self.data.shape[0] == 0:
-            return # cannot fit model when we have no data!
-
-        # Fit model...
         if self.model is None:
             raise Exception('self.model is None! '
                             ' It must be set before calling fit()!')
 
-        # We cannot fit model to a single value
-        # so if we have a single value then repeat it twice.
-        data = (np.append(self.data, self.data, axis=0) 
-                if self.data.shape[0] == 1 
-                else self.data)
+        if self.data.shape[0] == 0:
+            raise Exception('cannot fit model when we have no data!')
+        elif self.data.shape[0] == 1:
+            # We cannot fit model to a single value
+            # so if we have a single value then repeat it twice.
+            data = np.append(self.data, self.data, axis=0) 
+        else:
+            data = self.data
+
         self.model.fit(data)
         self._model_is_stale = False
 
