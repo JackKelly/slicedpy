@@ -6,6 +6,8 @@ from sklearn.mixture import GMM
 from slicedpy.datastore import DataStore
 import matplotlib.dates as mdates
 import numpy as np
+import pandas as pd
+from pda.channel import DEFAULT_TIMEZONE
 
 class PowerState(Bunch):
     """
@@ -38,6 +40,7 @@ class PowerState(Bunch):
         self.count_per_run = DataStore(model=GMM())
         self.current_count_per_run = 1
         self.essential = None
+        self.end = pd.Timestamp('1970-01-01 00:00:00+00:00', tz=DEFAULT_TIMEZONE)
 
     def prepare_for_power_state_graph(self):
         new = copy.copy(self)

@@ -3,6 +3,7 @@ import networkx as nx
 import Image
 import pandas as pd
 from slicedpy.powerstate import PowerState
+from datetime import timedelta
 
 """
 Requires:
@@ -54,7 +55,7 @@ class Appliance(object):
 
         # Now take the sequence of sig power states and merge these into
         # the set of unique power states for each appliance.
-        self.update_power_state_graph(sig_power_states)
+        self.update_power_state_graph(sig_power_states, sig)
 
         # STILL TO DO (if necessary):
         # Graph edges:
@@ -85,7 +86,7 @@ class Appliance(object):
         #   then rank by saliency.
         return sig_power_states
 
-    def update_power_state_graph(self, sig_power_states):
+    def update_power_state_graph(self, sig_power_states, sig):
         """Take the list of sig_power_states and merge these into
         self.power_state_graph. Just figure out which power segments
         are similar based just on power.  Don't bother trying to split
@@ -95,18 +96,22 @@ class Appliance(object):
           ``sig_power_states`` (list of PowerStates)
         """
 
+        G = self.power_state_graph # just to make the code easier to read...
+
         # If power state graph has only one node ('off') then
         # this is the first training example.
-        is_1st_example = len(self.power_state_graph.nodes()) == 1
+        is_1st_example = len(G.nodes()) == 1
 
-        prev_essential_nodes = [node for node in self.power_state_graph.nodes()
-                                if node != self.off_power_state and node.essential]
+        prev_essential_nodes = [node for node in G.nodes()
+                                if node != self.off_power_state 
+                                and node.essential]
         
-        prev_ps = self.off_power_state
+        prev_sps = prev_ps = self.off_power_state
+
         for sps in sig_power_states:
             found_match = False
             sps_prepped = sps.prepare_for_power_state_graph()
-            for ps in self.power_state_graph.nodes():
+            for ps in G.nodes():
                 if ps.similar(sps):
                     try:
                         prev_essential_nodes.remove(ps)
@@ -121,27 +126,44 @@ class Appliance(object):
                 # power states as not essential (because this power state 
                 # was not observed in any previous example).
                 sps_prepped.essential = is_1st_example
-                self.power_state_graph.add_node(sps_prepped)
+                G.add_node(sps_prepped)
                 ps = sps_prepped
 
-            # Add edge
-            self.power_state_graph.add_edge(prev_ps, ps)
+            # Add edge (but only if we're not adding a loop to the off power state!)
+            if not (prev_ps==self.off_power_state and ps==self.off_power_state):
+                edge_dur = (sps.start - prev_sps.end).total_seconds()
+                edge_pwr = sig.crop(prev_sps.end, sps.start).joules() / edge_dur
+                watts_near_start = sig.crop(sps.start-timedelta(seconds=6),
+                                            sps.start+timedelta(seconds=5))
+                fdiff = watts_near_start.series.diff().dropna()
+                i_of_largest_fdiff = fdiff.abs().argmax()
+                edge_fwd_diff = fdiff.iloc[i_of_largest_fdiff]
 
-            # SAVE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
-            prev_mean_power = prev_ps.power.get_model().mean
-            mean_power_diff = ps.power.get_model().mean - prev_mean_power
-            fv = [mean_power_diff]
-            fv.extend(sps_prepped.get_feature_vector())
-            self.feature_matrix.append(fv)
-            self.feature_matrix_labels.append(ps)
+                if (prev_ps, ps) in G.edges():
+#                    G[prev_ps][ps]['object'].update(edge_dur, edge_pwr, edge_fwd_diff)
+                    pass
+                else:
+ #                   G.add_edge(prev_ps, ps, object=Edge(edge_dur, edge_pwr, edge_fwd_diff))
+                   G.add_edge(prev_ps, ps)
 
-            prev_ps = ps
+                # SAVE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
+                prev_mean_power = prev_ps.power.get_model().mean
+                mean_power_diff = ps.power.get_model().mean - prev_mean_power
+                fv = [mean_power_diff]
+                fv.extend(sps_prepped.get_feature_vector())
+                self.feature_matrix.append(fv)
+                self.feature_matrix_labels.append(ps)
+
+                del prev_ps
+                prev_ps = ps
+            del prev_sps
+            prev_sps = sps
 
         # add 'off' edge
-        self.power_state_graph.add_edge(prev_ps, self.off_power_state)
+        G.add_edge(prev_ps, self.off_power_state)
 
         # Update count_per_run GMM for each power state:
-        for ps in self.power_state_graph.nodes():
+        for ps in G.nodes():
             ps.save_count_per_run()
 
         # Mark as unessential any nodes which were previously marked essential

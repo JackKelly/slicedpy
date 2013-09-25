@@ -8,10 +8,12 @@ DATA_DIR = '/data/mine/domesticPowerData/BellendenRd/wattsUp'
 ######### WASHING MACHINE
 wm_app = Appliance('wm')
 
+print('Loading washingmachine1.csv')
 wm1 = Channel()
 wm1.load_wattsup(path.join(DATA_DIR, 'washingmachine1.csv'))
 wm_app.train_on_single_example(wm1)
 
+print('Loading washingmachine2.csv')
 wm2 = Channel()
 wm2.load_wattsup(path.join(DATA_DIR, 'washingmachine2.csv'))
 wm_sig_power_states = wm_app.train_on_single_example(wm2)
