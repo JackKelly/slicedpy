@@ -41,6 +41,7 @@ class Appliance(object):
         Args:
             sig (pda.Channel): example power signature of appliance
         """
+        sig.pad()
 
         # Extract features.  Each returns a DataFrame.
         pwr_sgmnts = fd.min_max_power_sgmnts(sig.series)
