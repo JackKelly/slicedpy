@@ -26,8 +26,18 @@ class PowerState(Bunch):
         * current_count_per_run (int)
 
     """
-    def __init__(self,  **kwds):
+    def __init__(self, preset=None, name='',  **kwds):
         super(PowerState, self).__init__(**kwds)
+        if preset == 'off':
+            self.configure_as_off()
+
+    def configure_as_off(self):
+        """Configure this PowerState as 'off'."""
+        self.power = DataStore(model=Normal())
+        self.power.append(0)
+        self.count_per_run = DataStore(model=GMM())
+        self.current_count_per_run = 1
+        self.essential = None
 
     def prepare_for_power_state_graph(self):
         new = copy.copy(self)
@@ -77,14 +87,13 @@ class PowerState(Bunch):
         """Merges ``other`` into ``self``."""
         print("Merging {:.2f}W".format(self.power.get_model().mean))
         self.current_count_per_run += 1
-        optional_attributes = ['slope', 'intercept']
         for attribute in ['duration', 'power', 'slope', 'intercept', 
                           'spike_histogram', 'count_per_run']:
             try:
                 self.__dict__[attribute].extend(other.__dict__[attribute])
-            except KeyError as e:
-                if str(e).strip('\'') not in optional_attributes:
-                    raise
+            except KeyError:
+                # Not all powerstates have every attribute.
+                pass
 
     def plot(self, ax, color='k'):
         ax.plot([self.start, self.end], 

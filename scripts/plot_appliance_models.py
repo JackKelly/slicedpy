@@ -24,9 +24,8 @@ for ps in wm_sig_power_states:
 wm_app.draw_power_state_graph()
 
 for node in wm_app.power_state_graph.nodes():
-    if node != 'off':
-        print(node)
-        print("node", node.power.get_model().mean, "essential=", node.essential)
+    print(node)
+    print("node", node.power.get_model().mean, "essential=", node.essential)
 
 ######### TV
 # tv_app = Appliance('tv')

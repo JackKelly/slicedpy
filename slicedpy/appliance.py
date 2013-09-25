@@ -2,6 +2,7 @@ import feature_detectors as fd
 import networkx as nx
 import Image
 import pandas as pd
+from slicedpy.powerstate import PowerState
 
 """
 Requires:
@@ -28,7 +29,8 @@ class Appliance(object):
 
     def reset(self):
         self.power_state_graph = nx.DiGraph()
-        self.power_state_graph.add_node('off')
+        self.off_power_state = PowerState(preset='off')
+        self.power_state_graph.add_node(self.off_power_state)
         self.feature_matrix = []
         self.feature_matrix_labels = []
 
@@ -94,17 +96,17 @@ class Appliance(object):
 
         # If power state graph has only one node ('off') then
         # this is the first training example.
-        first_example = len(self.power_state_graph.nodes()) == 1
+        is_1st_example = len(self.power_state_graph.nodes()) == 1
 
         prev_essential_nodes = [node for node in self.power_state_graph.nodes()
-                                if node != 'off' and node.essential]
+                                if node != self.off_power_state and node.essential]
         
-        prev_ps = 'off'
+        prev_ps = self.off_power_state
         for sps in sig_power_states:
             found_match = False
             sps_prepped = sps.prepare_for_power_state_graph()
             for ps in self.power_state_graph.nodes():
-                if ps != 'off' and ps.similar(sps):
+                if ps.similar(sps):
                     try:
                         prev_essential_nodes.remove(ps)
                     except ValueError:
@@ -117,7 +119,7 @@ class Appliance(object):
                 # all power states as 'essential', otherwise mark all new
                 # power states as not essential (because this power state 
                 # was not observed in any previous example).
-                sps_prepped.essential = first_example
+                sps_prepped.essential = is_1st_example
                 self.power_state_graph.add_node(sps_prepped)
                 ps = sps_prepped
 
@@ -125,10 +127,7 @@ class Appliance(object):
             self.power_state_graph.add_edge(prev_ps, ps)
 
             # SAVE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
-            if prev_ps == 'off':
-                prev_mean_power = 0
-            else:
-                prev_mean_power = prev_ps.power.get_model().mean
+            prev_mean_power = prev_ps.power.get_model().mean
             mean_power_diff = ps.power.get_model().mean - prev_mean_power
             fv = [mean_power_diff]
             fv.extend(sps_prepped.get_feature_vector())
@@ -138,12 +137,11 @@ class Appliance(object):
             prev_ps = ps
 
         # add 'off' edge
-        self.power_state_graph.add_edge(prev_ps, 'off')
+        self.power_state_graph.add_edge(prev_ps, self.off_power_state)
 
         # Update count_per_run GMM for each power state:
         for ps in self.power_state_graph.nodes():
-            if ps != 'off':
-                ps.save_count_per_run()
+            ps.save_count_per_run()
 
         # Mark as unessential any nodes which were previously marked essential
         # but which weren't encountered on this training example
