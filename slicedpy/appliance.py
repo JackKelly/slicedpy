@@ -4,7 +4,7 @@ import networkx as nx
 import Image
 import pandas as pd
 from slicedpy.powerstate import PowerState
-from datetime import timedelta
+from slicedpy.edge import Edge
 
 """
 Requires:
@@ -132,28 +132,12 @@ class Appliance(object):
 
             # Add edge (but only if we're not adding a loop to the off power state!)
             if not (prev_ps==self.off_power_state and ps==self.off_power_state):
-                edge_dur = (sps.start - prev_sps.end).total_seconds()
-                edge_pwr = sig.crop(prev_sps.end, sps.start).joules() / edge_dur
-                watts_near_start = sig.crop(sps.start-timedelta(seconds=6),
-                                            sps.start+timedelta(seconds=5))
-                fdiff = watts_near_start.series.diff().dropna()
-                i_of_largest_fdiff = fdiff.abs().argmax()
-                edge_fwd_diff = fdiff.iloc[i_of_largest_fdiff]
-                sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean
 
-                feature_vector = [edge_dur, edge_pwr, edge_fwd_diff, sps_diff]
-                print("edge from", prev_ps.power.get_model().mean,
-                      "(", prev_sps.power.get_model().mean, ")",
-                      "to", ps.power.get_model().mean, 
-                      "(", sps.power.get_model().mean, ")",
-                      "=", feature_vector)
+                if (prev_ps, ps) not in G.edges():
+                    G.add_edge(prev_ps, ps, object=Edge())
+                G[prev_ps][ps]['object'].update(sps, prev_sps, sig)
 
-                if (prev_ps, ps) in G.edges():
-                    G[prev_ps][ps]['data'].append(feature_vector)
-                else:
-                    G.add_edge(prev_ps, ps, data=feature_vector)
-
-                # SAVE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
+                # SAVE POWER STATE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
                 prev_mean_power = prev_ps.power.get_model().mean
                 mean_power_diff = ps.power.get_model().mean - prev_mean_power
                 fv = [mean_power_diff]
