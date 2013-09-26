@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import feature_detectors as fd
 import networkx as nx
 import Image
@@ -138,13 +139,19 @@ class Appliance(object):
                 fdiff = watts_near_start.series.diff().dropna()
                 i_of_largest_fdiff = fdiff.abs().argmax()
                 edge_fwd_diff = fdiff.iloc[i_of_largest_fdiff]
+                sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean
+
+                feature_vector = [edge_dur, edge_pwr, edge_fwd_diff, sps_diff]
+                print("edge from", prev_ps.power.get_model().mean,
+                      "(", prev_sps.power.get_model().mean, ")",
+                      "to", ps.power.get_model().mean, 
+                      "(", sps.power.get_model().mean, ")",
+                      "=", feature_vector)
 
                 if (prev_ps, ps) in G.edges():
-#                    G[prev_ps][ps]['object'].update(edge_dur, edge_pwr, edge_fwd_diff)
-                    pass
+                    G[prev_ps][ps]['data'].append(feature_vector)
                 else:
- #                   G.add_edge(prev_ps, ps, object=Edge(edge_dur, edge_pwr, edge_fwd_diff))
-                   G.add_edge(prev_ps, ps)
+                    G.add_edge(prev_ps, ps, data=feature_vector)
 
                 # SAVE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
                 prev_mean_power = prev_ps.power.get_model().mean
