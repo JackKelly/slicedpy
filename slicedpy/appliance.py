@@ -138,11 +138,8 @@ class Appliance(object):
                 G[prev_ps][ps]['object'].update(sps, prev_sps, sig)
 
                 # SAVE POWER STATE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
-                prev_mean_power = prev_ps.power.get_model().mean
-                mean_power_diff = ps.power.get_model().mean - prev_mean_power
-                fv = [mean_power_diff]
-                fv.extend(sps_prepped.get_feature_vector())
-                self.feature_matrix.append(fv)
+                feature_vector = sps_prepped.get_feature_vector()
+                self.feature_matrix.append(feature_vector)
                 self.feature_matrix_labels.append(ps)
 
                 del prev_ps
@@ -151,7 +148,8 @@ class Appliance(object):
             prev_sps = sps
 
         # add 'off' edge
-        G.add_edge(prev_ps, self.off_power_state)
+        if prev_ps != self.off_power_state:
+            G.add_edge(prev_ps, self.off_power_state)
 
         # Update count_per_run GMM for each power state:
         for ps in G.nodes():
