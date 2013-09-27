@@ -30,10 +30,10 @@ class TestFeatureDetectors(unittest.TestCase):
         steady_states = fd.steady_states(pd.Series(arr))
         self.assertEqual(steady_states.index[0], 0)
         self.assertEqual(steady_states.iloc[0]['end'], 5)
-        self.assertEqual(steady_states.iloc[0]['power_stats'].mean, 3.5)
+        self.assertEqual(steady_states.iloc[0]['power'].mean, 3.5)
         self.assertEqual(steady_states.index[1], 6)
         self.assertEqual(steady_states.iloc[1]['end'], 11)
-        self.assertAlmostEqual(steady_states.iloc[1]['power_stats'].mean, 104.166, places=2)
+        self.assertAlmostEqual(steady_states.iloc[1]['power'].mean, 104.166, places=2)
 
         #########################
         # Now try to break it...

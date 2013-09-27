@@ -94,7 +94,8 @@ class Appliance(object):
         each power state based on spike histogram (yet).
 
         Args:
-          ``sig_power_states`` (list of PowerStates)
+          * sig_power_states (list of PowerStates)
+          * sig (pda.Channel): raw power data
         """
 
         G = self.power_state_graph # just to make the code easier to read...

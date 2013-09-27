@@ -16,8 +16,8 @@ class Normal(Bunch):
         Args
           * values (np.ndarray) (optional)
         """
-        super(Normal, self).__init__(**kwds)
         self.reset()
+        super(Normal, self).__init__(**kwds)
         if values is not None:
             self.partial_fit(values)
 

@@ -34,19 +34,24 @@ class Edge(Bunch):
           * sig (pda.Channel): raw power data
         """
 
+        # update power_segment_diff
         edge_dur = (sps.start - prev_sps.end).total_seconds()
+        sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean       
+        self.power_segment_diff.append(np.array([sps_diff, edge_dur], ndmin=2))
+
+        # update edge_power 
         edge_pwr = sig.crop(prev_sps.end, sps.start).joules() / edge_dur
+        self.edge_power.append(edge_pwr)
+
+        # update edge_fwd_diff
         watts_near_start = sig.crop(sps.start-timedelta(seconds=6),
                                     sps.start+timedelta(seconds=5))
         fdiff = watts_near_start.series.diff().dropna()
         i_of_largest_fdiff = fdiff.abs().argmax()
         edge_fwd_diff = fdiff.iloc[i_of_largest_fdiff]
-        sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean
-        
-        self.power_segment_diff.append(np.array([sps_diff, edge_dur], ndmin=2))
-        self.edge_power.append(edge_pwr)
         self.edge_fwd_diff.append(edge_fwd_diff)
 
+        # print diagnostics
         print("edge from", prev_sps.power.get_model().mean,
               "to", sps.power.get_model().mean,
               "=", self)

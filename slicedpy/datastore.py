@@ -34,16 +34,13 @@ class DataStore(object):
         Args:
           * new_data (np.ndarray or float or int)
         """
-        if isinstance(new_data, (float, int, np.float32, np.float64)):
+        if isinstance(new_data, (float, int, np.floating, np.integer)):
             new_data = np.array([new_data])
+        elif isinstance(new_data, np.ndarray):
+            if new_data.shape[0] == 0:
+                return # can't do anything useful with no data
         else:
-            try:
-                shape = new_data.shape[0]
-            except:
-                import ipdb; ipdb.set_trace()
-            else:
-                if shape == 0:
-                    return
+            raise TypeError('new_data must be a scalar or a numpy.ndarray')
 
         self.history.append(self.data.size)
         self.data = np.append(self.data, new_data, axis=0)
