@@ -18,54 +18,66 @@
 
 from __future__ import print_function, division
 import unittest
-import slicedpy.appliance as app
+import numpy as np
+import pandas as pd
+from pda.channel import Channel
+import matplotlib.pyplot as plt
+from slicedpy.appliance import Appliance
 from slicedpy.bunch import Bunch
 from slicedpy.powerstate import PowerState
 from slicedpy.datastore import DataStore
 from slicedpy.normal import Normal
 
-class TestPowerState(unittest.TestCase):
-    def test_update_power_state_graph(self):
+def fake_signature():
+    d = [0]*60 + [100]*60 + [200]*60 + [100]*60 + [200]*100 + [50]*300 + [0]*60
+    watts = np.array(d, dtype=np.float32)
+    rng = pd.date_range(0, freq='S', periods=len(d))
+    series = pd.Series(watts, index=rng)
+    return Channel(series=series)
 
-        powers = [Normal(mean=100, var=10, size=10), 
-                  Normal(mean=103, var=10, size=10), 
-                  Normal(mean=300, var=10, size=10), 
-                  Normal(mean=300, var=10, size=10), 
-                  Normal(mean=999, var=99, size=10)]
+class TestAppliance(unittest.TestCase):
+    def test_train_on_single_example(self):
+        # TRAIN POWER STATE GRAPH
+        chan = fake_signature()
+        app = Appliance(label='test appliance')
+        sig_power_states = app.train_on_single_example(chan)
 
-        sig_pwr_sgmnts = [PowerState(start=  0, end=200, power=DataStore(model=powers[0])),
-                          PowerState(start=400, end=500, power=DataStore(model=powers[1])),
-                          PowerState(start=501, end=600, power=DataStore(model=powers[2])),
-                          PowerState(start=601, end=700, power=DataStore(model=powers[3])),
-                          PowerState(start=701, end=800, power=DataStore(model=powers[4]))]
-
-        app.update_power_state_graph(sig_pwr_sgmnts)
+        # CHECK NODES
         nodes = app.power_state_graph.nodes()
+        nodes.sort(key=lambda node: node.power.get_model().mean)
+        self.assertEqual(len(nodes), 4)
 
-        # Test unique power states
-        correct_pwrs = [Normal(var=11.9205298013, size=300, mean=101.),
-                        Normal(var= 9.9,          size=198, mean=300.),
-                        Normal(var=99.,           size= 99, mean=999.)]
+        correct_powers = [0, 50, 100, 200]
+        correct_sizes = [514, 300, 120, 159]
 
-        correct_ups = [PowerState(power=DataStore(model=correct_pwrs[0])),
-                       PowerState(power=DataStore(model=correct_pwrs[1])),
-                       PowerState(power=DataStore(model=correct_pwrs[2]))]
+        for i, (pwr, size) in enumerate(zip(correct_powers, correct_sizes)):
+            self.assertEqual(nodes[i].power.get_model().mean, pwr)
+            self.assertEqual(nodes[i].power.get_model().var, 0)
+            self.assertEqual(nodes[i].power.get_model().size, size)
 
-        for corr_ups, test_ups in zip(correct_ups, nodes):
-            self.assertEqual(corr_ups.power.model.size, test_ups.power.model.size)
-            self.assertEqual(corr_ups.power.model.mean, test_ups.power.model.mean)
-            self.assertAlmostEqual(corr_ups.power.model.var, test_ups.power.model.var)
+        # CHECK EDGES
+        correct_edges = [(nodes[0], nodes[2]),
+                         (nodes[2], nodes[3]),
+                         (nodes[3], nodes[2]),
+                         (nodes[3], nodes[1]),
+                         (nodes[1], nodes[0])]
+        self.assertEqual(len(correct_edges), len(app.power_state_graph.edges()))
+        self.assertEqual(set(correct_edges), set(app.power_state_graph.edges()))
 
-        # Test mapped signature power segments
-        correct_msps = [Bunch(start=  0, end=200, mean=100, var=10, power_state=0),
-                        Bunch(start=400, end=500, mean=103, var=10, power_state=0),
-                        Bunch(start=501, end=600, mean=300, var=10, power_state=1),
-                        Bunch(start=601, end=700, mean=300, var=10, power_state=1),
-                        Bunch(start=701, end=800, mean=999, var=99, power_state=2)]
-        
-        for corr_msps, test_msps in zip(correct_msps, mapped_sig_pwr_sgmnts):
-            self.assertEqual(corr_msps, test_msps)
+        # fig1, ax1 = plt.subplots()
+        # chan.plot(ax1)
+        # for ps in sig_power_states:
+        #     ps.plot(ax1)
 
+        # app.draw_power_state_graph()
+        # plt.show()
+
+        correct_edge_pwrs = [100, 100, -100, -150, -50]
+
+        for i, edge in enumerate(correct_edges):
+            e = app.power_state_graph[edge[0]][edge[1]]['object']
+            edge_pwr = e.power_segment_diff.data[-1][0]
+            self.assertEqual(edge_pwr, correct_edge_pwrs[i])
 
 if __name__ == '__main__':
     unittest.main()

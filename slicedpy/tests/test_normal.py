@@ -71,7 +71,7 @@ class TestStats(unittest.TestCase):
         rvs1, rvs2 = two_samples_from_different_distribtions()
         norm1 = Normal().fit(rvs1)
         norm2 = Normal().fit(rvs2)
-        self.assertFalse(norm1.similar_mean(norm2))
+        self.assertFalse(norm1.similar_mean(norm2, p_value_threshold=0.1))
 
     def _compare_normal_and_array(self, norm, arr, ddof=1):
         self.assertEqual(norm.size, arr.size)

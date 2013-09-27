@@ -28,6 +28,7 @@ class TestFeatureDetectors(unittest.TestCase):
                        dtype=np.float32)
         
         steady_states = fd.steady_states(pd.Series(arr))
+
         self.assertEqual(steady_states.index[0], 0)
         self.assertEqual(steady_states.iloc[0]['end'], 5)
         self.assertEqual(steady_states.iloc[0]['power'].mean, 3.5)

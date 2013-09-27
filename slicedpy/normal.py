@@ -19,7 +19,7 @@ class Normal(Bunch):
         self.reset()
         super(Normal, self).__init__(**kwds)
         if values is not None:
-            self.partial_fit(values)
+            self.fit(values)
 
     def reset(self):
         self._fit_has_been_called = False
@@ -46,6 +46,9 @@ class Normal(Bunch):
         return self
 
     def partial_fit(self, values):
+        """
+        WARNING: This is often much slower than just using fit().
+        """
         # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
         if self._fit_has_been_called:
             raise Exception('You cannot call partial_fit() if fit() has been'
