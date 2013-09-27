@@ -21,7 +21,6 @@ import unittest
 import numpy as np
 import pandas as pd
 from pda.channel import Channel
-import matplotlib.pyplot as plt
 from slicedpy.appliance import Appliance
 from slicedpy.bunch import Bunch
 from slicedpy.powerstate import PowerState
@@ -36,14 +35,26 @@ def fake_signature():
     return Channel(series=series)
 
 class TestAppliance(unittest.TestCase):
-    def test_train_on_single_example(self):
+    def setUp(self):
         # TRAIN POWER STATE GRAPH
-        chan = fake_signature()
-        app = Appliance(label='test appliance')
-        sig_power_states = app.train_on_single_example(chan)
+        self.chan = fake_signature()
+        self.app = Appliance(label='test appliance')
+        sig_power_states = self.app.train_on_single_example(self.chan)
 
+        PLOT_DATA = False
+        if PLOT_DATA:
+            import matplotlib.pyplot as plt
+            fig1, ax1 = plt.subplots()
+            self.chan.plot(ax1)
+            for ps in sig_power_states:
+                ps.plot(ax1)
+
+            self.app.draw_power_state_graph()
+            plt.show()
+
+    def test_train_on_single_example(self):
         # CHECK NODES
-        nodes = app.power_state_graph.nodes()
+        nodes = self.app.power_state_graph.nodes()
         nodes.sort(key=lambda node: node.power.get_model().mean)
         self.assertEqual(len(nodes), 4)
 
@@ -61,21 +72,13 @@ class TestAppliance(unittest.TestCase):
                          (nodes[3], nodes[2]),
                          (nodes[3], nodes[1]),
                          (nodes[1], nodes[0])]
-        self.assertEqual(len(correct_edges), len(app.power_state_graph.edges()))
-        self.assertEqual(set(correct_edges), set(app.power_state_graph.edges()))
-
-        # fig1, ax1 = plt.subplots()
-        # chan.plot(ax1)
-        # for ps in sig_power_states:
-        #     ps.plot(ax1)
-
-        # app.draw_power_state_graph()
-        # plt.show()
+        self.assertEqual(len(correct_edges), len(self.app.power_state_graph.edges()))
+        self.assertEqual(set(correct_edges), set(self.app.power_state_graph.edges()))
 
         correct_edge_pwrs = [100, 100, -100, -150, -50]
 
         for i, edge in enumerate(correct_edges):
-            e = app.power_state_graph[edge[0]][edge[1]]['object']
+            e = self.app.power_state_graph[edge[0]][edge[1]]['object']
             edge_pwr = e.power_segment_diff.data[-1][0]
             self.assertEqual(edge_pwr, correct_edge_pwrs[i])
 
