@@ -10,20 +10,22 @@ class Edge(Bunch):
     """Represents edges on power state graph.
 
     Attributes:
-      * power_segment_diff (DataStore(n_columns=2, model=NearestNeighbors()):
-        Stores difference (power and time) between the two power segments.
-      * edge_power (DataStore(model=Normal()): average power consumed
+      * power_segment_diff (N x 2 list):
+        column1 = watts difference between source and destination signature 
+        power segments. 
+        column2 = time difference
+      * edge_power (DataStore(model=Normal())): average power consumed
         _between_ power segments. (used to estimate energy used between power
         segments)
-      * edge_fwd_diff (DataStore(model=NearestNeighbors()): the largest "spike"
-        in the raw power data observed around the start of the receiving node)
+      * edge_fwd_diff (list): the largest "spike"
+        in the raw power data observed around the start of the receiving node.
     """
 
     def __init__(self, **kwds):
         super(Bunch, self).__init__(**kwds)
-        self.power_segment_diff = DataStore(n_columns=2, model=NearestNeighbors())
+        self.power_segment_diff = []
         self.edge_power = DataStore(model=Normal())
-        self.edge_fwd_diff = DataStore(model=NearestNeighbors())
+        self.edge_fwd_diff = []
 
     def update(self, sps, prev_sps, sig):
         """
@@ -36,8 +38,8 @@ class Edge(Bunch):
 
         # update power_segment_diff
         edge_dur = (sps.start - prev_sps.end).total_seconds()
-        sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean       
-        self.power_segment_diff.append(np.array([sps_diff, edge_dur], ndmin=2))
+        sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean
+        self.power_segment_diff.append([sps_diff, edge_dur])
 
         # update edge_power 
         edge_pwr = sig.crop(prev_sps.end, sps.start).joules() / edge_dur
@@ -58,7 +60,7 @@ class Edge(Bunch):
 
     def __str__(self):
         s = ""
-        psd = self.power_segment_diff.data[-1]
+        psd = self.power_segment_diff[-1]
         s += ("last power_segment_diff: power={:.2f}W, time={:.2f}s\n"
               .format(psd[0], psd[1]))
         return s

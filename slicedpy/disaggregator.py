@@ -1,5 +1,6 @@
 from sklearn import tree
 import subprocess
+from sklearn.neighbors import NearestNeighbors
 
 class Disaggregator(object):
     """
@@ -8,6 +9,26 @@ class Disaggregator(object):
 
     Training:
     * responsible for storing list of all known appliances
+    """
+
+    def __init__(self):
+        self.appliances = []
+
+    def train_knn(self, appliances):
+        """
+        Args:
+          * appliances (list of Appliance objects)
+        """
+        self.appliances = appliances
+        self.power_seg_diff_knn = NearestNeighbors(n_neighbours=1)
+        # TODO: finish fleshing this out... see code in test_appliance.test_edge_knn()
+
+
+    ##########################################################################
+    # DECISION TREES
+    ##########################################################################
+
+    """
     * creates decision tree for all power states
 
     Disaggregation:
@@ -24,18 +45,8 @@ class Disaggregator(object):
         * reads the decision tree backwards to find most efficient way to find 
           each power state.
         * then tries to find complete power segments
+
     """
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.appliances = []
-        self.power_state_decision_tree = tree.DecisionTreeClassifier()
-
-    ##########################################################################
-    # DECISION TREES
-    ##########################################################################
 
     def train_decision_tree(self, appliances):
         """
@@ -43,6 +54,7 @@ class Disaggregator(object):
           * appliances (list of Appliance objects)
         """
         self.appliances = appliances
+        self.power_state_decision_tree = tree.DecisionTreeClassifier()
 
         # training data:
         X = [] # list of feature vectors

@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 from pda.channel import Channel
 from slicedpy.appliance import Appliance
+from sklearn.neighbors import NearestNeighbors
 from slicedpy.bunch import Bunch
 from slicedpy.powerstate import PowerState
 from slicedpy.datastore import DataStore
@@ -41,6 +42,15 @@ class TestAppliance(unittest.TestCase):
         self.app = Appliance(label='test appliance')
         sig_power_states = self.app.train_on_single_example(self.chan)
 
+        self.nodes = self.app.power_state_graph.nodes()
+        self.nodes.sort(key=lambda node: node.power.get_model().mean)
+
+        self.correct_edges = [(self.nodes[0], self.nodes[2]),
+                              (self.nodes[2], self.nodes[3]),
+                              (self.nodes[3], self.nodes[2]),
+                              (self.nodes[3], self.nodes[1]),
+                              (self.nodes[1], self.nodes[0])]
+
         PLOT_DATA = False
         if PLOT_DATA:
             import matplotlib.pyplot as plt
@@ -53,34 +63,35 @@ class TestAppliance(unittest.TestCase):
             plt.show()
 
     def test_train_on_single_example(self):
-        # CHECK NODES
-        nodes = self.app.power_state_graph.nodes()
-        nodes.sort(key=lambda node: node.power.get_model().mean)
-        self.assertEqual(len(nodes), 4)
-
         correct_powers = [0, 50, 100, 200]
         correct_sizes = [514, 300, 120, 159]
-
-        for i, (pwr, size) in enumerate(zip(correct_powers, correct_sizes)):
-            self.assertEqual(nodes[i].power.get_model().mean, pwr)
-            self.assertEqual(nodes[i].power.get_model().var, 0)
-            self.assertEqual(nodes[i].power.get_model().size, size)
-
-        # CHECK EDGES
-        correct_edges = [(nodes[0], nodes[2]),
-                         (nodes[2], nodes[3]),
-                         (nodes[3], nodes[2]),
-                         (nodes[3], nodes[1]),
-                         (nodes[1], nodes[0])]
-        self.assertEqual(len(correct_edges), len(self.app.power_state_graph.edges()))
-        self.assertEqual(set(correct_edges), set(self.app.power_state_graph.edges()))
-
         correct_edge_pwrs = [100, 100, -100, -150, -50]
 
-        for i, edge in enumerate(correct_edges):
+        # CHECK SELF.NODES
+        self.assertEqual(len(self.nodes), 4)
+
+        for i, (pwr, size) in enumerate(zip(correct_powers, correct_sizes)):
+            self.assertEqual(self.nodes[i].power.get_model().mean, pwr)
+            self.assertEqual(self.nodes[i].power.get_model().var, 0)
+            self.assertEqual(self.nodes[i].power.get_model().size, size)
+
+        # CHECK EDGES
+        self.assertEqual(len(self.correct_edges), 
+                         len(self.app.power_state_graph.edges()))
+        self.assertEqual(set(self.correct_edges), 
+                         set(self.app.power_state_graph.edges()))
+
+        for i, edge in enumerate(self.correct_edges):
             e = self.app.power_state_graph[edge[0]][edge[1]]['object']
-            edge_pwr = e.power_segment_diff.data[-1][0]
+            edge_pwr = e.power_segment_diff[-1][0]
             self.assertEqual(edge_pwr, correct_edge_pwrs[i])
+
+    def test_edge_knn(self):
+        X, Y = self.app.get_edge_feature_matrix()
+        knn = NearestNeighbors(n_neighbors=1)
+        knn.fit(X)
+        distances, indices = knn.kneighbors([-50,1])
+        self.assertEqual(indices[0][0], 3)
 
 if __name__ == '__main__':
     unittest.main()

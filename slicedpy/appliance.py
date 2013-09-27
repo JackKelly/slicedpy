@@ -161,6 +161,17 @@ class Appliance(object):
         for unessential_node in prev_essential_nodes:
             unessential_node.essential = False
 
+    def get_edge_feature_matrix(self):
+        X = []
+        Y = [] # labels
+        for edge in self.power_state_graph.edges():
+            e = self.power_state_graph[edge[0]][edge[1]]['object']
+            for psd in e.power_segment_diff:
+                X.append(psd)
+                Y.append(edge)
+
+        return X, Y
+
     def draw_power_state_graph(self, png_filename='power_state_graph.png'):
         p = nx.to_pydot(self.power_state_graph)
         p.write_png(png_filename)
