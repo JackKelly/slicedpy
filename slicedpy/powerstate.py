@@ -116,4 +116,10 @@ class PowerState(Bunch):
                     color=color)
 
     def __str__(self):
-        return "power={:.1f}W".format(self.power.get_model().mean)
+        model = self.power.get_model()
+        s = "power={:.1f}W\n".format(model.mean)
+        s += "std={:.1f}\n".format(model.std)
+        s += "min={:.1f}\n".format(model.min)
+        s += "max={:.1f}\n".format(model.max)
+        s += "size={:.1f}\n".format(model.size)
+        return s
