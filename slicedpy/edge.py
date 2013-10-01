@@ -39,7 +39,8 @@ class Edge(Bunch):
         # update power_segment_diff
         edge_dur = (sps.start - prev_sps.end).total_seconds()
         sps_diff = sps.power.get_model().mean - prev_sps.power.get_model().mean
-        self.power_segment_diff.append([sps_diff, edge_dur])
+#        self.power_segment_diff.append([sps_diff, edge_dur])
+        self.power_segment_diff.append([sps_diff,1])
 
         # update edge_power 
         edge_pwr = sig.crop(prev_sps.end, sps.start).joules() / edge_dur
@@ -61,6 +62,6 @@ class Edge(Bunch):
     def __str__(self):
         s = ""
         psd = self.power_segment_diff[-1]
-        s += ("last power_segment_diff: power={:.2f}W, time={:.2f}s\n"
-              .format(psd[0], psd[1]))
+        s += ("last power_segment_diff: power={:.2f}W\n"
+              .format(psd[0]))
         return s

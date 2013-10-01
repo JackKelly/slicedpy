@@ -164,8 +164,8 @@ class Appliance(object):
     def get_edge_feature_matrix(self):
         X = []
         Y = [] # labels
-        for edge in self.power_state_graph.edges():
-            e = self.power_state_graph[edge[0]][edge[1]]['object']
+        for edge in self.power_state_graph.edges(data=True):
+            e = edge[2]['object']
             for psd in e.power_segment_diff:
                 X.append(psd)
                 Y.append(edge)
