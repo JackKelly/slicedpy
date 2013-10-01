@@ -170,6 +170,9 @@ class Appliance(object):
             if edge[1] == self.off_power_state:
                 # we don't care about the inbound edge to off_power_state
                 continue
+            if edge[0] == edge[1]:
+                # we don't care about self-loops
+                continue
             e = edge[2]['object']
             for psd in e.power_segment_diff:  # psd = power seg difference
                 X.append(psd)
