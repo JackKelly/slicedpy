@@ -1,6 +1,8 @@
-from sklearn import tree
 import subprocess
-from sklearn.neighbors import NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn import tree
+import slicedpy.feature_detectors as fd
+import pandas as pd
 
 class Disaggregator(object):
     """
@@ -20,8 +22,43 @@ class Disaggregator(object):
           * appliances (list of Appliance objects)
         """
         self.appliances = appliances
-        self.power_seg_diff_knn = NearestNeighbors(n_neighbours=1)
-        # TODO: finish fleshing this out... see code in test_appliance.test_edge_knn()
+        self.power_seg_diff_knn = KNeighborsClassifier(n_neighbors=1)
+        X = [] # feature matrix
+        Y = [] # labels
+        for app in self.appliances:
+            X_app, Y_app = app.get_edge_feature_matrix()
+            X.extend(X_app)
+            Y.extend(zip([app]*len(Y_app), Y_app))
+
+        self.power_seg_diff_knn.fit(X, Y)
+
+    def disaggregate(self, aggregate):
+        """
+        Args:
+          * aggregate (pda.Channel)
+
+        Returns:
+          * pd.DataFrame. Each row is an appliance hypothesis. Columns:
+            - index (datetime): start of appliance hypothesis
+            - end (datetime): end of appliance hypothesis
+            - appliance (slicedpy.Appliance)
+            - likelihood (float)
+        """
+        pwr_sgmnts = fd.min_max_power_sgmnts(aggregate.series)
+        output = []
+
+        prev_pwr_seg = pwr_sgmnts.iloc[0]
+        for start, pwr_seg in pwr_sgmnts.iloc[1:].iterrows():
+            pwr_seg_mean_diff = (pwr_seg['power'].get_model().mean - 
+                                 prev_pwr_seg['power'].get_model().mean)
+#            pwr_seg_time_diff = (start - prev_pwr_seg['end']).total_seconds()
+            predicted = self.power_seg_diff_knn.predict([pwr_seg_mean_diff,1])
+#                                                         pwr_seg_time_diff])
+            output.append({'end': pwr_seg['end'],
+                           'appliance': predicted[0][0]})
+            prev_pwr_seg = pwr_seg
+
+        return pd.DataFrame(output, index=pwr_sgmnts.index[1:])
 
 
     ##########################################################################
