@@ -136,7 +136,9 @@ class Appliance(object):
 
                 if (prev_ps, ps) not in G.edges():
                     G.add_edge(prev_ps, ps, object=Edge())
-                G[prev_ps][ps]['object'].update(sps, prev_sps, sig)
+                edge = G[prev_ps][ps]['object']
+                edge.update(sps, prev_sps, sig)
+                G[prev_ps][ps]['label'] = edge.label()
 
                 # SAVE POWER STATE FEATURE VECTOR FOR TRAINING CLASSIFIER LATER
                 feature_vector = sps_prepped.get_feature_vector()

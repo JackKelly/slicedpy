@@ -83,8 +83,11 @@ class PowerState(Bunch):
         self.count_per_run.append(np.array([self.current_count_per_run]))
         self.current_count_per_run = 0
 
-    def similar(self, other):
-        return self.power.get_model().similar_mean(other.power.get_model())
+    def similar(self, other, plus_minus=50):
+        own_mean = self.power.get_model().mean
+        other_mean = other.power.get_model().mean
+        return own_mean - plus_minus < other_mean < own_mean + plus_minus
+#        return self.power.get_model().similar_mean(other.power.get_model())
 
     def merge(self, other):
         """Merges ``other`` into ``self``."""

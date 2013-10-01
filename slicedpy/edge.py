@@ -65,3 +65,10 @@ class Edge(Bunch):
         s += ("last power_segment_diff: power={:.2f}W\n"
               .format(psd[0]))
         return s
+
+    def label(self):
+        """Short label for printing on graph."""
+        s = ""
+        psd = self.power_segment_diff[-1]
+        s += ("{:.2f}W\n" .format(psd[0]))        
+        return s
