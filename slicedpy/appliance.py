@@ -161,12 +161,15 @@ class Appliance(object):
         for unessential_node in prev_essential_nodes:
             unessential_node.essential = False
 
-    def get_edge_feature_matrix(self):
+    def get_inbound_edge_feature_matrix(self):
         X = []
         Y = [] # labels
         for edge in self.power_state_graph.edges(data=True):
+            if edge[1] == self.off_power_state:
+                # we don't care about the inbound edge to off_power_state
+                continue
             e = edge[2]['object']
-            for psd in e.power_segment_diff:
+            for psd in e.power_segment_diff:  # psd = power seg difference
                 X.append(psd)
                 Y.append(edge)
 

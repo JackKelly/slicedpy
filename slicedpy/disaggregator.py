@@ -3,6 +3,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn import tree
 import slicedpy.feature_detectors as fd
 import pandas as pd
+import numpy as np
 
 class Disaggregator(object):
     """
@@ -22,20 +23,24 @@ class Disaggregator(object):
           * appliances (list of Appliance objects)
         """
         self.appliances = appliances
-        self.power_seg_diff_knn = KNeighborsClassifier(n_neighbors=1)
+        self.power_seg_diff_knn = KNeighborsClassifier(n_neighbors=1,
+                                                       weights='distance')
         X = [] # feature matrix
         Y = [] # labels
         for app in self.appliances:
-            X_app, Y_app = app.get_edge_feature_matrix()
+            X_app, Y_app = app.get_inbound_edge_feature_matrix()
             X.extend(X_app)
-            Y.extend(zip([app]*len(Y_app), Y_app))
+            for edge in Y_app:
+                Y.append({'appliance':app, 'edge':edge})
 
         self.power_seg_diff_knn.fit(X, Y)
 
-    def disaggregate(self, aggregate):
+    def disaggregate(self, aggregate, return_power_segments=False):
         """
         Args:
           * aggregate (pda.Channel)
+          * return_power_states (bool): Default=False. Set to true to
+            return pd.DataFrame, power_segments
 
         Returns:
           * pd.DataFrame. Each row is an appliance hypothesis. Columns:
@@ -46,19 +51,32 @@ class Disaggregator(object):
         """
         pwr_sgmnts = fd.min_max_power_sgmnts(aggregate.series)
         output = []
+        rng = []
+        MAX_DIST = 100 # watts
 
         prev_pwr_seg = pwr_sgmnts.iloc[0]
         for start, pwr_seg in pwr_sgmnts.iloc[1:].iterrows():
-            pwr_seg_mean_diff = (pwr_seg['power'].get_model().mean - 
+            pwr_seg_mean_diff = (pwr_seg['power'].get_model().mean -
                                  prev_pwr_seg['power'].get_model().mean)
 #            pwr_seg_time_diff = (start - prev_pwr_seg['end']).total_seconds()
-            predicted = self.power_seg_diff_knn.predict([pwr_seg_mean_diff,1])
-#                                                         pwr_seg_time_diff])
-            output.append({'end': pwr_seg['end'],
-                           'appliance': predicted[0][0]})
+
+            test_data = np.array([pwr_seg_mean_diff, 1])
+            dist, ind = self.power_seg_diff_knn.kneighbors(test_data)
+            if dist.min() < MAX_DIST:
+                predicted = self.power_seg_diff_knn.predict(test_data)[0]
+                
+                output.append({'end': pwr_seg['end'],
+                               'appliance': predicted['appliance']})
+                rng.append(start)
+
             prev_pwr_seg = pwr_seg
 
-        return pd.DataFrame(output, index=pwr_sgmnts.index[1:])
+        df = pd.DataFrame(output, index=rng)
+
+        if return_power_segments:
+            return df, pwr_sgmnts
+        else:
+            return df
 
 
     ##########################################################################
@@ -82,7 +100,6 @@ class Disaggregator(object):
         * reads the decision tree backwards to find most efficient way to find 
           each power state.
         * then tries to find complete power segments
-
     """
 
     def train_decision_tree(self, appliances):

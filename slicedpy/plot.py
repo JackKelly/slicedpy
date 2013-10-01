@@ -1,6 +1,7 @@
 import numpy as np
 import pylab as pl
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 
 def plot_steady_states(ax, states, offset=0, 
                        color='g', label='Steady state'):
@@ -18,7 +19,10 @@ def plot_steady_states(ax, states, offset=0,
     line = None
     for start, val in states.iterrows():
         end = val['end']
-        mean = val['power'].mean + offset
+        try:
+            mean = val['power'].mean + offset
+        except AttributeError:
+            mean = val['power'].get_model().mean + offset
         line, = ax.plot([start, end], [mean, mean], color=color, 
                      linewidth=2, alpha=0.6)
     if line is not None:
@@ -54,7 +58,7 @@ def plot_clusters(ax, db, X, title_append='', scale_x=1):
     labels = db.labels_
     core_samples = db.core_sample_indices_
     unique_labels = set(labels)
-    colors = pl.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
+    colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
     if scale_x == 1:
         X_copy = X
     else:
@@ -114,13 +118,28 @@ def plot_appliance_hypotheses(ax, appliances):
       * ax (matplotlib.Axes)
       * appliances (pd.DataFrame): output from Disaggregator.disaggregate()
     """
-    
+
     unique_appliances = {}
     for start, row in appliances.iterrows():
-        if row['appliance'] not in unique_appliances.keys():
-            unique_appliances[row['appliance']] = []
-        unique_appliances[row['appliance']].append([start, row['end']])
+        app = row['appliance']
+        if not unique_appliances.has_key(app):
+            unique_appliances[app] = []
+        unique_appliances[app].append([start, row['end']])
+    n_unique_appliances = len(unique_appliances)
 
+    # create list of colors
+    colors = plt.cm.jet(np.linspace(0,1,n_unique_appliances))
 
+    # now iterate through unique_appliances
+    y = 0
+    handles = []
+    labels = []
+    for app, data in unique_appliances.items():
+        for x in data:
+            line, = ax.plot(x, [y, y], color=colors[y], linewidth=5)
+        handles.append(line)
+        labels.append(app.label)
+        y += 1
 
+    ax.legend(handles, labels)
     

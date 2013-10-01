@@ -87,7 +87,7 @@ class TestAppliance(unittest.TestCase):
             self.assertEqual(edge_pwr, correct_edge_pwrs[i])
 
     def test_edge_knn(self):
-        X, Y = self.app.get_edge_feature_matrix()
+        X, Y = self.app.get_inbound_edge_feature_matrix()
         knn = NearestNeighbors(n_neighbors=1)
         knn.fit(X)
         distances, indices = knn.kneighbors([-50,1])
