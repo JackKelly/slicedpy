@@ -106,3 +106,21 @@ def plot_multiple_linear_regressions(ax, mlr, window_size=10, ax2=None):
 
     if ax2:
         ax2.set_title('std_err')
+
+
+def plot_appliance_hypotheses(ax, appliances):
+    """
+    Args:
+      * ax (matplotlib.Axes)
+      * appliances (pd.DataFrame): output from Disaggregator.disaggregate()
+    """
+    
+    unique_appliances = {}
+    for start, row in appliances.iterrows():
+        if row['appliance'] not in unique_appliances.keys():
+            unique_appliances[row['appliance']] = []
+        unique_appliances[row['appliance']].append([start, row['end']])
+
+
+
+    
