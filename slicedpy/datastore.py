@@ -34,7 +34,9 @@ class DataStore(object):
         Args:
           * new_data (np.ndarray or float or int)
         """
-        if isinstance(new_data, (float, int, np.floating, np.integer)):
+        if new_data is None:
+            return
+        elif isinstance(new_data, (float, int, np.floating, np.integer)):
             new_data = np.array([new_data])
         elif isinstance(new_data, np.ndarray):
             if new_data.shape[0] == 0:
@@ -69,6 +71,8 @@ class DataStore(object):
         self._model_is_stale = False
 
     def extend(self, other):
+        if other is None:
+            return
         if self.n_columns != other.n_columns:
             raise Exception('self.n_columns != other.n_columns')
         self.history.extend(other.history)

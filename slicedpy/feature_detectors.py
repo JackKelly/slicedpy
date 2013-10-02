@@ -8,7 +8,7 @@ import scipy.optimize
 import matplotlib.dates as mdates
 import math, datetime
 from slicedpy.normal import Normal
-from slicedpy.powerstate import PowerState
+from slicedpy.powerstate import PowerState, PowerSegment
 from slicedpy.datastore import DataStore
 from slicedpy import utils
 from pda.channel import _indicies_of_periods
@@ -564,13 +564,13 @@ def merge_features(pwr_sgmnts, decays, spike_histogram):
       * spike_histogram: pd.DataFrame
 
     Returns:
-      List of PowerStates.  See PowerState class for a list of attributes.
+      List of PowerSegments.  See PowerSegment class for a list of attributes.
     """
     merged = []
     for start, pwr_seg in pwr_sgmnts.iterrows():
-        pwr_state = PowerState(start=start, 
-                               end=pwr_seg['end'],
-                               power=pwr_seg['power'])
+        pwr_state = PowerSegment(start=start, 
+                                 end=pwr_seg['end'],
+                                 power=pwr_seg['power'])
 
         # DECAYS:
         # Assume decays to be within some constant number of

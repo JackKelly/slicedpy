@@ -27,11 +27,9 @@ class Appliance(object):
 
     def __init__(self, label=''):
         self.label = label
-        self.reset()
-
-    def reset(self):
         self.power_state_graph = nx.DiGraph()
-        self.off_power_state = PowerState(preset='off')
+        self.off_power_state = PowerState()
+        self.off_power_state.configure_as_off()
         self.power_state_graph.add_node(self.off_power_state)
         self.feature_matrix = []
         self.feature_matrix_labels = []
@@ -112,7 +110,7 @@ class Appliance(object):
 
         for sps in sig_power_states:
             found_match = False
-            sps_prepped = sps.prepare_for_power_state_graph()
+            sps_prepped = PowerState(sps)
             for ps in G.nodes():
                 if ps.similar(sps):
                     try:
