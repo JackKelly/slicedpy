@@ -2,7 +2,7 @@ from __future__ import print_function, division
 from pda.channel import Channel
 from slicedpy.appliance import Appliance
 import matplotlib.pyplot as plt
-import os.path as path
+from os import path
 
 DATA_DIR = '/data/mine/domesticPowerData/BellendenRd/wattsUp'
 
