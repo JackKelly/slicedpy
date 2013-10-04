@@ -5,6 +5,7 @@ from slicedpy.normal import Normal
 from sklearn.mixture import GMM
 from slicedpy.datastore import DataStore
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pda.channel import DEFAULT_TIMEZONE
@@ -119,6 +120,8 @@ class PowerSegment(PowerSuper):
     A washing machine might have lots PowerSegments: wash, heat, wash, 
     heat, wash, spin...
 
+    PowerSegments have start and end variables; PowerStates do not.
+
     Attributes:
         * start: datetime of start of each power state
         * end: datetime of end of each power state
@@ -137,15 +140,35 @@ class PowerSegment(PowerSuper):
         super(PowerSegment, self).__init__(**kwds)
 
     def plot(self, ax, color='k'):
+        model = self.power.get_model()
+
+        # Plot mean line
         ax.plot([self.start, self.end], 
-                [self.power.get_model().mean, self.power.get_model().mean], 
-                color=color)
+                [model.mean, model.mean], 
+                color=color, linewidth=2, alpha=0.8)
+
+        # Plot 1 standard deviation
+        num_start = mdates.date2num(self.start)
+        num_end = mdates.date2num(self.end)
+        width = num_end - num_start
+        std_rect = plt.Rectangle(xy=(self.start, model.mean - model.std),
+                                 width=width,
+                                 height=(model.std * 2), 
+                                 alpha=0.8, color="#aaaaaa")
+        ax.add_patch(std_rect)
+
+        # Plot min and max
+        std_rect = plt.Rectangle(xy=(self.start, model.min),
+                                 width=width,
+                                 height=(model.max - model.min), 
+                                 alpha=0.5, color="#aaaaaa")
+        ax.add_patch(std_rect)
         
-        if self.__dict__.get('slope') is not None:
+        # Plot slop
+        if self.slope is not None:
             print("plotting slope: intercept=", self.intercept, 
                   "slope=", self.slope)
             curve = lambda x, c, m: c + (m / x)
-            num_start = mdates.date2num(self.start)
             num_end = num_start + (10 / mdates.SEC_PER_DAY)
             X = np.linspace(num_start, num_end, 10)
             x = X * mdates.SEC_PER_DAY
