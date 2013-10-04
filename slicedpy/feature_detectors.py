@@ -331,7 +331,7 @@ def relative_deviation_power_sgmnts(
     return pd.DataFrame(power_sgmnts, index=idx)
 
 
-def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
+def min_max_power_sgmnts(data, max_deviation=20, initial_window_size=30,
                          look_ahead=3, max_ptp=1000):
     """power segment detector which looks for periods with similar min
     and max values.
@@ -351,7 +351,7 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
     and max).
 
     Args:
-      * series (pd.Series): watts
+      * data (pd.Series or np.ndarray): watts
       * max_deviation (float): watts
       * initial_window_size (int): number of samples
       * look_ahead (int): number of samples
@@ -362,7 +362,14 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
         * ``end``
         * ``power``: a DataStore(model=Normal())
     """
-    watts = series.values
+    if isinstance(data, pd.Series):
+        watts = data.values
+        index = data.index
+    elif isinstance(data, np.ndarray):
+        watts = data
+        index = np.arange(watts.shape[0])
+    else:
+        raise Exception('data is of wrong type!')
 
     ps_start_i = 0
     ps_end_i = initial_window_size
@@ -372,10 +379,10 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
     n = watts.size - look_ahead
 
     def append_power_segment(ps_start_i, ps_end_i, ps):
-        idx.append(series.index[ps_start_i])
+        idx.append(index[ps_start_i])
         ds = DataStore(model=Normal())
         ds.append(ps)
-        power_sgmnts.append({'end': series.index[ps_end_i-1], 
+        power_sgmnts.append({'end': index[ps_end_i-1], 
                              'power': ds})
 
     while True:
@@ -399,13 +406,13 @@ def min_max_power_sgmnts(series, max_deviation=20, initial_window_size=30,
                 continue
         else:
             # Take an ``initial_window_size`` chunk from the tail
-            # and make sure the mean of the front of the power segment
-            # falls within max_deviation of the min and max of the tail.
+            # and do some checks.
             tail_split = ps_end_i-initial_window_size
             front = watts[ps_start_i:tail_split]
             tail = watts[tail_split:ps_end_i]
             if (front.mean() < tail.min() - max_deviation or
                 front.mean() > tail.max() + max_deviation):
+#            if (abs(tail.std() - front.std()) > tail.std()*30):
                 end_of_ps = True
                 ps_end_i = tail_split
                 ps = front

@@ -20,6 +20,7 @@ def train_appliance(label, sig_data_filenames):
         chan = Channel()
         chan.load_wattsup(path.join(DATA_DIR, f_name))
         sps = app.train_on_single_example(chan)
+#        chan.series.diff().hist()
 
     # Plot raw power data
     fig1, ax1 = plt.subplots()
@@ -39,8 +40,8 @@ def train_appliance(label, sig_data_filenames):
         print("node", node.power.get_model().mean, "essential=", node.essential)
 
 
-# train_appliance('washing machine', ['washingmachine1.csv', 'washingmachine2.csv'])
-train_appliance('tv', ['tv1.csv'])
+train_appliance('washing machine', ['washingmachine1.csv', 'washingmachine2.csv'])
+# train_appliance('tv', ['tv1.csv'])
 # train_appliance('toaster', ['toaster1.csv'])
 # train_appliance('kettle', ['kettle1.csv'])
 

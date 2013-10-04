@@ -1,14 +1,15 @@
 from __future__ import print_function, division
 from bunch import Bunch
 import copy
-from slicedpy.normal import Normal
 from sklearn.mixture import GMM
-from slicedpy.datastore import DataStore
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pda.channel import DEFAULT_TIMEZONE
+from slicedpy.normal import Normal
+from slicedpy.datastore import DataStore
+import feature_detectors as fd
 
 class PowerSuper(Bunch):
     def __init__(self, **kwds):
@@ -95,11 +96,25 @@ class PowerState(PowerSuper):
         self.count_per_run.append(np.array([self.current_count_per_run]))
         self.current_count_per_run = 0
 
-    def similar(self, other, plus_minus=50):
-        own_mean = self.power.get_model().mean
-        other_mean = other.power.get_model().mean
-        return own_mean - plus_minus < other_mean < own_mean + plus_minus
-#        return self.power.get_model().similar_mean(other.power.get_model())
+    def similar(self, other, mode='min max', plus_minus=50):
+        """
+        Args:
+          mode (str): 'min max' | 'plus minus' | 'ttest'
+          'min max': uses fd.min_max_power_segments to decide if power segments
+                     are similar or not.
+        """
+        if mode == 'min max':
+            concdata = np.concatenate([self.power.data, other.power.data])
+            pwr_segs = fd.min_max_power_sgmnts(concdata)
+            return len(pwr_segs) == 1
+        elif mode == 'plus minus':
+            own_mean = self.power.get_model().mean
+            other_mean = other.power.get_model().mean
+            return own_mean - plus_minus < other_mean < own_mean + plus_minus
+        elif mode == 'ttest':
+            return self.power.get_model().similar_mean(other.power.get_model())
+        else:
+            raise Exception('unrecognised mode.')
 
     def merge(self, other):
         """Merges ``other`` into ``self``."""

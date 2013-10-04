@@ -10,20 +10,21 @@ from scipy.stats import *
 SMOOTHING = False
 
 subplots, chan = init_aggregate_and_appliance_dataset_figure(
-    start_date='2013/6/4 10:00', end_date='2013/6/4 14:00',
+    start_date='2013/6/4', end_date='2013/6/5',
+#    start_date='2013/6/4 10:00', end_date='2013/6/4 14:00',
     n_subplots=2 if SMOOTHING else 1,
     date_format='%H:%M:%S', alpha=0.6, plot_appliance_ground_truth=False)
 
 ########################
 # HART'S STEADY STATES
-if True:
+if False:
     print("Hart's steady states...")
     steady_states = fd.steady_states(chan.series)
     plot_steady_states(subplots[0], steady_states, color='b', label='Hart')
 
 #####################
 # MEAN STEADY STATES
-if True:
+if False:
     print("Mean steady states...")
     mean_steady_states = fd.mean_steady_states(chan.series,
                                                max_range=15)
@@ -32,7 +33,7 @@ if True:
 
 #####################
 # SLIDING MEANS STEADY STATES
-if True:
+if False:
     print("Sliding mean steady states...")
     sliding_mean_steady_states = fd.sliding_mean_steady_states(chan.series,
                                                                max_range=15)
@@ -45,7 +46,7 @@ if True:
 
 #####################
 # RELATIVE DEVIATION POWER SEGMENTS
-if True:
+if False:
     print("Relative deviation power segments...")
     relative_deviation_power_segments = fd.relative_deviation_power_sgmnts(chan.series)
     plot_steady_states(subplots[0], relative_deviation_power_segments, 
@@ -58,11 +59,11 @@ if True:
     print("Min-Max power segments...")
     min_max_power_segments = fd.min_max_power_sgmnts(chan.series)
     plot_steady_states(subplots[0], min_max_power_segments, 
-                        offset=-2, color='r', label='Min Max')
+                        offset=0, color='r', label='Min Max')
 
 
 #####################
-# MIN MAX CHUNK POWER SEGMENTS
+# MEAN CHUNK POWER SEGMENTS
 if False:
     print("Mean chunk power segments...")
     mean_chunk_power_segments = fd.mean_chunk_power_sgmnts(chan.series) 
@@ -71,7 +72,7 @@ if False:
 
 #####################
 # MINIMISE MEAN DEVIATION POWER SEGMENTS
-if True:
+if False:
     print("Minimise mean deviation power segments...")
     min_mean_dev_power_segments = fd.minimise_mean_deviation_power_sgmnts(chan.series) 
     plot_steady_states(subplots[0], min_mean_dev_power_segments, 
