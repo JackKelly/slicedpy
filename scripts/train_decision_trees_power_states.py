@@ -1,6 +1,6 @@
 from pda.channel import Channel
 from slicedpy.appliance import Appliance
-from slicedpy.disaggregator import Disaggregator
+from slicedpy.disaggregator import DTDisaggregator
 import matplotlib.pyplot as plt
 import os.path as path
 
@@ -43,7 +43,7 @@ k1.load_wattsup(path.join(DATA_DIR, 'kettle1.csv'))
 kettle_app.train_on_single_example(k1)
 
 ######### TRAIN DECISION TREE
-disag = Disaggregator()
+disag = DTDisaggregator()
 disag.train_decision_tree([wm_app, tv_app, toaster_app, kettle_app])
 disag.draw_tree()
 

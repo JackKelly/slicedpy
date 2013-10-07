@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 from pda.channel import Channel
 from slicedpy.appliance import Appliance
-from slicedpy.disaggregator import Disaggregator
+from slicedpy.disaggregator import KNNDisaggregator
 from slicedpy.plot import plot_appliance_hypotheses, plot_steady_states
 from pda.dataset import init_aggregate_and_appliance_dataset_figure
 import matplotlib.pyplot as plt
@@ -46,7 +46,7 @@ k1.load_wattsup(path.join(DATA_DIR, 'kettle1.csv'))
 kettle_app.train_on_single_example(k1)
 
 ######### TRAIN KNN
-disag = Disaggregator()
+disag = KNNDisaggregator()
 disag.train_knn([wm_app, tv_app, toaster_app, kettle_app])
 #disag.train_knn([toaster_app, kettle_app])
 

@@ -17,6 +17,16 @@ class Disaggregator(object):
     def __init__(self):
         self.appliances = []
 
+
+class KNNDisaggregator(Disaggregator):
+
+    ##########################################################################
+    # K-NEAREST NEIGHBOURS
+    ##########################################################################
+
+    def __init__(self):
+        super(KNNDisaggregator, self).__init__()
+
     def train_knn(self, appliances):
         """
         Args:
@@ -78,6 +88,7 @@ class Disaggregator(object):
         else:
             return df
 
+class DTDisaggregator(Disaggregator):
 
     ##########################################################################
     # DECISION TREES
@@ -101,6 +112,10 @@ class Disaggregator(object):
           each power state.
         * then tries to find complete power segments
     """
+
+
+    def __init__(self):
+        super(DTDisaggregator, self).__init__()
 
     def train_decision_tree(self, appliances):
         """
