@@ -143,3 +143,46 @@ def plot_appliance_hypotheses(ax, appliances):
 
     ax.legend(handles, labels)
     
+
+def plot_data_and_model(data, model, ax=None, 
+                        hist_color='grey', model_color='b'):
+
+    if ax is None:
+        ax = plt.gca()
+
+    def color_yticklabels(axes, color):
+        for tl in axes.get_yticklabels():
+            tl.set_color(color)
+
+    # Plot histogram of data
+    n, bins, patches = ax.hist(data, label='data histogram', 
+                               color=hist_color, edgecolor=hist_color,
+                               bins=1000)
+    color_yticklabels(ax, hist_color)
+    ax.set_ylabel('count', color=hist_color)
+
+    # Plot model fit
+    model_ax = ax.twinx()
+    model_x = np.linspace(bins[0], bins[-1], 10000)
+    logprob = model.score(model_x)
+    model_line, = model_ax.plot(model_x, np.exp(logprob), label='model fit',
+                                color=model_color, linewidth=1)
+    color_yticklabels(model_ax, model_color)
+    model_ax.set_ylabel('probability density', color=model_color)
+
+    # Legend
+    ax_handles, ax_labels = ax.get_legend_handles_labels()
+    model_handles, model_labels = model_ax.get_legend_handles_labels()
+    ax.legend(ax_handles + model_handles, ax_labels + model_labels)
+
+    # Make space for legend.
+    def extend_ylim(axes):
+        ylim = axes.get_ylim()
+        axes.set_ylim([ylim[0], ylim[1]*1.2])
+    extend_ylim(ax)
+    extend_ylim(model_ax)
+
+    # Title
+    ax.set_title('Comparison of data histogram and model')
+    
+    return ax

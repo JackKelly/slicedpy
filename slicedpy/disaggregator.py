@@ -1,9 +1,12 @@
 import subprocess
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import tree
+from sklearn import mixture
 import slicedpy.feature_detectors as fd
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+from slicedpy.plot import plot_data_and_model
 
 class Disaggregator(object):
     """
@@ -16,6 +19,61 @@ class Disaggregator(object):
 
     def __init__(self):
         self.appliances = []
+
+class BayesDisaggregator(Disaggregator):
+
+    def __init__(self):
+        super(BayesDisaggregator, self).__init__()
+
+    def _fit_p_foward_diff(self, aggregate, plot=True):
+        """Estimate the probability density function for P(forward diff).
+
+        Args:
+          * aggregate (pda.Channel)
+        """
+#        aggregate = aggregate.crop('2013/6/1','2013/6/7')
+        fwd_diff = aggregate.series.diff().dropna().values
+        fwd_diff = fwd_diff[np.fabs(fwd_diff) > 20]
+
+        # find best number of components for GMM:
+        lowest_bic = np.inf
+        best_n_components = None
+        best_cv_type = None
+#        cv_types = ['spherical', 'tied', 'diag', 'full']
+        cv_types = ['full']
+        for cv_type in cv_types:
+            for n_components in range(19,30):
+                print('Trying n_components={:d}, cv_type={:s}.'
+                      .format(n_components, cv_type))
+                gmm = mixture.GMM(n_components=n_components, 
+                                  covariance_type=cv_type)
+                gmm.fit(fwd_diff)
+                bic = gmm.bic(fwd_diff)
+                if bic < lowest_bic:
+                    print('  this model had the lowest BIC ({}) so far.'
+                          .format(bic))
+                    lowest_bic = bic
+                    best_n_components = n_components
+                    best_cv_type = cv_type
+
+        self._p_fwd_diff = mixture.GMM(n_components=best_n_components, 
+                                       covariance_type=cv_type)
+        self._p_fwd_diff.fit(fwd_diff)
+
+#        self._p_fwd_diff = mixture.DPGMM(n_components=20, covariance_type='full')
+#        self._p_fwd_diff.fit(fwd_diff)
+
+        if plot:
+            print('Plotting...')
+            return plot_data_and_model(fwd_diff, self._p_fwd_diff)
+
+    def train(self, aggregate, appliances):
+        """
+        Args:
+          * aggregate (pda.Channel)
+          * appliances (list of slicedpy.Appliance objects)
+        """
+        
 
 
 class KNNDisaggregator(Disaggregator):
