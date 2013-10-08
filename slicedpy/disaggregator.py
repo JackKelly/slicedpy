@@ -1,3 +1,4 @@
+from __future__ import print_function, division
 import subprocess
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import tree
@@ -37,7 +38,7 @@ def get_bins(data):
     neg_bins = np.arange(start=start, stop=-MIN_FWD_DIFF, step=BIN_WIDTH)
     pos_bins = np.arange(start=MIN_FWD_DIFF, stop=stop, step=BIN_WIDTH)
     bins = np.concatenate([neg_bins, [-MIN_FWD_DIFF], pos_bins])
-    return bins
+    return bins, len(neg_bins)
 
 
 class BayesDisaggregator(Disaggregator):
@@ -59,12 +60,14 @@ class BayesDisaggregator(Disaggregator):
         fwd_diff = aggregate.series.diff().dropna().values
         fwd_diff = fwd_diff[np.fabs(fwd_diff) >= MIN_FWD_DIFF]
 
-        self._bins = get_bins(fwd_diff)
-        self._density, bin_edges = np.histogram(fwd_diff, bins=self._bins, 
-                                                density=True)
+        self._bin_edges, self._n_negative_bins = get_bins(fwd_diff)
+        density, bin_edges = np.histogram(fwd_diff, bins=self._bin_edges, 
+                                          density=True)
+        self._prob_mass = density / BIN_WIDTH
+
         # Plot
         ax = plt.gca()
-        ax.plot(bin_edges[:-1], self._density)
+        ax.plot(bin_edges[:-1], self._prob_mass)
         plt.show()
         return ax
 
@@ -72,7 +75,31 @@ class BayesDisaggregator(Disaggregator):
         # take weighted average from nearest 2 bins.
         # divide by BIN_WIDTH
         # careful near zero and at extremes
-        pass
+        if (abs(fwd_diff) < MIN_FWD_DIFF or
+            fwd_diff > self._bin_edges[-1] or
+            fwd_diff < self._bin_edges[0]):
+            return 0.0
+
+        # TODO: this maths isn't quite right. Need an INT!
+        bin_i = (fwd_diff / float(BIN_WIDTH)) + self._n_negative_bins
+
+        if abs(fwd_diff) < MIN_FWD_DIFF + BIN_WIDTH:
+            return self._prob_mass[bin_i]
+
+        position_in_bin1 = (fwd_diff - self._bin_edges[bin_i]) / BIN_WIDTH
+        if (position_in_bin1 == 0.5 or # exactly half-way in bin_i
+            bin_i == len(self._bin_edges) - 1 or # in top bin
+            bin_i == 0): # in bottom bin
+            return self._prob_mass[bin_i]
+        elif position_in_bin1 > 0.5:
+            bin2_i = bin_i + 1
+        else: # position_in_bin1 < 0.5
+            bin2_i = bin_i - 1
+
+        # TODO: take weighted average of bin_i and bin2_i
+
+        return p_fwd_diff
+
 
     def _old_fit_p_foward_diff(self, aggregate, plot=True):
         """Estimate the probability density function for P(forward diff).
