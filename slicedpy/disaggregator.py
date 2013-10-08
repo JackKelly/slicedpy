@@ -46,18 +46,22 @@ class BayesDisaggregator(Disaggregator):
     def __init__(self):
         super(BayesDisaggregator, self).__init__()
 
-    def _fit_p_foward_diff(self, aggregate, plot=True):
+    def _fit_p_fwd_diff(self, aggregate, plot=True):
         """Estimate the probability density function for P(forward diff).
 
         Args:
-          * aggregate (pda.Channel)
+          * aggregate (pda.Channel or np.ndarray)
         """
 
         # TODO: 
         # * filter out diffs where gap is > sample period.
         # * merge spikes
 
-        fwd_diff = aggregate.series.diff().dropna().values
+        if isinstance(aggregate, np.ndarray):
+            fwd_diff = np.diff(aggregate)
+        else:
+            fwd_diff = aggregate.series.diff().dropna().values
+
         fwd_diff = fwd_diff[np.fabs(fwd_diff) >= MIN_FWD_DIFF]
 
         self._bin_edges, self._n_negative_bins = get_bins(fwd_diff)
@@ -72,31 +76,52 @@ class BayesDisaggregator(Disaggregator):
         return ax
 
     def _p_fwd_diff(self, fwd_diff):
+        """The probability of the forward diff, as calculated previously
+        using _fit_p_fwd_diff().  If fwd_diff lies in the middle of a bin
+        then return the probability mass associated with that bin otherwise
+        return the weighted average of that bin and the neighbouring bin.
+
+        Args:
+          * fwd_diff (float): watts
+
+        Returns:
+          * p_fwd_diff (float): [0,1]
+        """
         # take weighted average from nearest 2 bins.
-        # divide by BIN_WIDTH
         # careful near zero and at extremes
         if (abs(fwd_diff) < MIN_FWD_DIFF or
-            fwd_diff > self._bin_edges[-1] or
+            fwd_diff >= self._bin_edges[-1] or
             fwd_diff < self._bin_edges[0]):
             return 0.0
 
-        # TODO: this maths isn't quite right. Need an INT!
-        bin_i = (fwd_diff / float(BIN_WIDTH)) + self._n_negative_bins
+        # Calculate the bin index corresponding to fwd_diff
+        if fwd_diff < 0:
+            bin1_i = (math.floor((fwd_diff + MIN_FWD_DIFF) / float(BIN_WIDTH)) +
+                     self._n_negative_bins)
+        else:
+            bin1_i = (math.floor((fwd_diff - MIN_FWD_DIFF) / float(BIN_WIDTH)) +
+                     self._n_negative_bins + 1)
+        bin1_i = int(bin1_i)
 
-        if abs(fwd_diff) < MIN_FWD_DIFF + BIN_WIDTH:
-            return self._prob_mass[bin_i]
+        if abs(fwd_diff) <= MIN_FWD_DIFF + (BIN_WIDTH / 2):
+            return self._prob_mass[bin1_i]
 
-        position_in_bin1 = (fwd_diff - self._bin_edges[bin_i]) / BIN_WIDTH
-        if (position_in_bin1 == 0.5 or # exactly half-way in bin_i
-            bin_i == len(self._bin_edges) - 1 or # in top bin
-            bin_i == 0): # in bottom bin
-            return self._prob_mass[bin_i]
+        position_in_bin1 = (fwd_diff - self._bin_edges[bin1_i]) / BIN_WIDTH
+        if (position_in_bin1 == 0.5 # exactly half-way in bin1_i
+            or bin1_i == len(self._bin_edges) - 2 # in top bin
+            or bin1_i == 0): # in bottom bin
+            return self._prob_mass[bin1_i]
         elif position_in_bin1 > 0.5:
-            bin2_i = bin_i + 1
+            bin2_i = bin1_i + 1
         else: # position_in_bin1 < 0.5
-            bin2_i = bin_i - 1
+            bin2_i = bin1_i - 1
 
-        # TODO: take weighted average of bin_i and bin2_i
+        # Take weighted average of bin1_i and bin2_i
+        proportion_of_bin1 = 1 - abs(position_in_bin1 - 0.5)
+        proportion_of_bin2 = 1 - proportion_of_bin1
+
+        p_fwd_diff = ((proportion_of_bin1 * self._prob_mass[bin1_i]) +
+                       proportion_of_bin2 * self._prob_mass[bin2_i])
 
         return p_fwd_diff
 
