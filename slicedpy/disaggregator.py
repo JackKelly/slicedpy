@@ -6,6 +6,7 @@ import slicedpy.feature_detectors as fd
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 from slicedpy.plot import plot_data_and_model
 
 class Disaggregator(object):
@@ -20,6 +21,9 @@ class Disaggregator(object):
     def __init__(self):
         self.appliances = []
 
+BIN_WIDTH = 5 # watts
+MIN_FWD_DIFF = 1 # watts
+
 class BayesDisaggregator(Disaggregator):
 
     def __init__(self):
@@ -31,7 +35,45 @@ class BayesDisaggregator(Disaggregator):
         Args:
           * aggregate (pda.Channel)
         """
+
+        # TODO: 
+        # * filter out diffs where gap is > sample period.
+        # * merge spikes
+
+        fwd_diff = aggregate.series.diff().dropna().values
+        fwd_diff = fwd_diff[np.fabs(fwd_diff) >= MIN_FWD_DIFF]
+
+        # Bins
+        start = math.floor(fwd_diff.min())
+        start = start if start % BIN_WIDTH == 0 else start - (start % BIN_WIDTH)
+
+        stop = math.ceil(fwd_diff.max())
+        stop = stop if stop % BIN_WIDTH == 0 else stop + (BIN_WIDTH - (stop % BIN_WIDTH))
+
+        self._bins = np.arange(start=start, stop=stop, step=BIN_WIDTH)
+
+        # Calculate histogram
+        self._density, bin_edges = np.histogram(fwd_diff, bins=self._bins, 
+                                                density=True)
+        # Plot
+        ax = plt.gca()
+        ax.plot(bin_edges[:-1], self._density)
+        plt.show()
+        return ax
+
+    def _p_fwd_diff(self, fwd_diff):
+        # take weighted average from nearest 2 bins.
+        # divide by BIN_WIDTH
+        # careful near zero and at extremes
+
+    def _old_fit_p_foward_diff(self, aggregate, plot=True):
+        """Estimate the probability density function for P(forward diff).
+
+        Args:
+          * aggregate (pda.Channel)
+        """
 #        aggregate = aggregate.crop('2013/6/1','2013/6/7')
+        # TODO: filter out diffs where gap is > sample period.
         fwd_diff = aggregate.series.diff().dropna().values
         fwd_diff = fwd_diff[np.fabs(fwd_diff) > 20]
 
@@ -66,6 +108,7 @@ class BayesDisaggregator(Disaggregator):
         if plot:
             print('Plotting...')
             return plot_data_and_model(fwd_diff, self._p_fwd_diff)
+
 
     def train(self, aggregate, appliances):
         """
