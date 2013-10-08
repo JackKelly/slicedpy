@@ -24,6 +24,22 @@ class Disaggregator(object):
 BIN_WIDTH = 5 # watts
 MIN_FWD_DIFF = 1 # watts
 
+
+def get_bins(data):
+    start = math.floor(data.min())
+    start = start if start % BIN_WIDTH == 0 else start - (start % BIN_WIDTH)
+    start -= MIN_FWD_DIFF
+
+    stop = math.ceil(data.max())
+    stop = stop if stop % BIN_WIDTH == 0 else stop + (BIN_WIDTH - (stop % BIN_WIDTH))
+    stop += MIN_FWD_DIFF + BIN_WIDTH
+
+    neg_bins = np.arange(start=start, stop=-MIN_FWD_DIFF, step=BIN_WIDTH)
+    pos_bins = np.arange(start=MIN_FWD_DIFF, stop=stop, step=BIN_WIDTH)
+    bins = np.concatenate([neg_bins, [-MIN_FWD_DIFF], pos_bins])
+    return bins
+
+
 class BayesDisaggregator(Disaggregator):
 
     def __init__(self):
@@ -43,16 +59,7 @@ class BayesDisaggregator(Disaggregator):
         fwd_diff = aggregate.series.diff().dropna().values
         fwd_diff = fwd_diff[np.fabs(fwd_diff) >= MIN_FWD_DIFF]
 
-        # Bins
-        start = math.floor(fwd_diff.min())
-        start = start if start % BIN_WIDTH == 0 else start - (start % BIN_WIDTH)
-
-        stop = math.ceil(fwd_diff.max())
-        stop = stop if stop % BIN_WIDTH == 0 else stop + (BIN_WIDTH - (stop % BIN_WIDTH))
-
-        self._bins = np.arange(start=start, stop=stop, step=BIN_WIDTH)
-
-        # Calculate histogram
+        self._bins = get_bins(fwd_diff)
         self._density, bin_edges = np.histogram(fwd_diff, bins=self._bins, 
                                                 density=True)
         # Plot
@@ -65,6 +72,7 @@ class BayesDisaggregator(Disaggregator):
         # take weighted average from nearest 2 bins.
         # divide by BIN_WIDTH
         # careful near zero and at extremes
+        pass
 
     def _old_fit_p_foward_diff(self, aggregate, plot=True):
         """Estimate the probability density function for P(forward diff).
