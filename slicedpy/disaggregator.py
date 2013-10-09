@@ -22,23 +22,30 @@ class Disaggregator(object):
     def __init__(self):
         self.appliances = []
 
-BIN_WIDTH = 5 # watts
+BIN_WIDTH = 5 # watts. Must be an int.
 MIN_FWD_DIFF = 1 # watts
 
 
 def get_bins(data):
+    """
+    Args:
+      * data (np.ndarray)
+    """
     start = math.floor(data.min())
     start = start if start % BIN_WIDTH == 0 else start - (start % BIN_WIDTH)
     start -= MIN_FWD_DIFF
+    start = int(start)
 
     stop = math.ceil(data.max())
     stop = stop if stop % BIN_WIDTH == 0 else stop + (BIN_WIDTH - (stop % BIN_WIDTH))
     stop += MIN_FWD_DIFF + BIN_WIDTH
+    stop = int(stop)
 
     neg_bins = np.arange(start=start, stop=-MIN_FWD_DIFF, step=BIN_WIDTH)
     pos_bins = np.arange(start=MIN_FWD_DIFF, stop=stop, step=BIN_WIDTH)
-    bins = np.concatenate([neg_bins, [-MIN_FWD_DIFF], pos_bins])
-    return bins, len(neg_bins)
+    bin_edges = np.concatenate([neg_bins, [-MIN_FWD_DIFF], pos_bins])
+    n_negative_bins = len(neg_bins)
+    return bin_edges, n_negative_bins
 
 
 class BayesDisaggregator(Disaggregator):
@@ -67,15 +74,19 @@ class BayesDisaggregator(Disaggregator):
         self._bin_edges, self._n_negative_bins = get_bins(fwd_diff)
         density, bin_edges = np.histogram(fwd_diff, bins=self._bin_edges, 
                                           density=True)
-        self._prob_mass = density / BIN_WIDTH
+
+        # Treat the bins as discrete values and come up with a
+        # 'probability mass' for each bin:
+        self._prob_mass = density * BIN_WIDTH
 
         # Plot
-        ax = plt.gca()
-        ax.plot(bin_edges[:-1], self._prob_mass)
-        plt.show()
-        return ax
+        if plot:
+            ax = plt.gca()
+            ax.bar(bin_edges[:-1], self._prob_mass)
+            plt.show()
+            return ax
 
-    def _p_fwd_diff(self, fwd_diff):
+    def _p_fwd_diff(self, fwd_diff, print_debug_info=False):
         """The probability of the forward diff, as calculated previously
         using _fit_p_fwd_diff().  If fwd_diff lies in the middle of a bin
         then return the probability mass associated with that bin otherwise
@@ -96,24 +107,27 @@ class BayesDisaggregator(Disaggregator):
 
         # Calculate the bin index corresponding to fwd_diff
         if fwd_diff < 0:
-            bin1_i = (math.floor((fwd_diff + MIN_FWD_DIFF) / float(BIN_WIDTH)) +
+            bin1_i = (math.floor((fwd_diff + MIN_FWD_DIFF) / BIN_WIDTH) +
                      self._n_negative_bins)
         else:
-            bin1_i = (math.floor((fwd_diff - MIN_FWD_DIFF) / float(BIN_WIDTH)) +
+            bin1_i = (math.floor((fwd_diff - MIN_FWD_DIFF) / BIN_WIDTH) +
                      self._n_negative_bins + 1)
         bin1_i = int(bin1_i)
 
         if abs(fwd_diff) <= MIN_FWD_DIFF + (BIN_WIDTH / 2):
             return self._prob_mass[bin1_i]
 
+        n_bins = len(self._bin_edges) - 1
         position_in_bin1 = (fwd_diff - self._bin_edges[bin1_i]) / BIN_WIDTH
-        if (position_in_bin1 == 0.5 # exactly half-way in bin1_i
-            or bin1_i == len(self._bin_edges) - 2 # in top bin
-            or bin1_i == 0): # in bottom bin
+        if position_in_bin1 == 0.5: # exactly half-way in bin1_i
             return self._prob_mass[bin1_i]
         elif position_in_bin1 > 0.5:
+            if bin1_i == n_bins - 1: # in top bin
+                return self._prob_mass[bin1_i]
             bin2_i = bin1_i + 1
         else: # position_in_bin1 < 0.5
+            if bin1_i == 0:
+                return self._prob_mass[bin1_i]
             bin2_i = bin1_i - 1
 
         # Take weighted average of bin1_i and bin2_i
@@ -123,52 +137,14 @@ class BayesDisaggregator(Disaggregator):
         p_fwd_diff = ((proportion_of_bin1 * self._prob_mass[bin1_i]) +
                        proportion_of_bin2 * self._prob_mass[bin2_i])
 
+        if print_debug_info:
+            fmt = '{:.1f}\n'
+            print(('fwd_diff='+fmt+'position_in_bin1='+fmt+'prop_of_bin1='+fmt+
+                   'prop_of_bin2='+fmt+'p_fwd_diff='+fmt)
+                  .format(fwd_diff, position_in_bin1, proportion_of_bin1,
+                          proportion_of_bin2, p_fwd_diff))
+
         return p_fwd_diff
-
-
-    def _old_fit_p_foward_diff(self, aggregate, plot=True):
-        """Estimate the probability density function for P(forward diff).
-
-        Args:
-          * aggregate (pda.Channel)
-        """
-#        aggregate = aggregate.crop('2013/6/1','2013/6/7')
-        # TODO: filter out diffs where gap is > sample period.
-        fwd_diff = aggregate.series.diff().dropna().values
-        fwd_diff = fwd_diff[np.fabs(fwd_diff) > 20]
-
-        # find best number of components for GMM:
-        lowest_bic = np.inf
-        best_n_components = None
-        best_cv_type = None
-#        cv_types = ['spherical', 'tied', 'diag', 'full']
-        cv_types = ['full']
-        for cv_type in cv_types:
-            for n_components in range(19,30):
-                print('Trying n_components={:d}, cv_type={:s}.'
-                      .format(n_components, cv_type))
-                gmm = mixture.GMM(n_components=n_components, 
-                                  covariance_type=cv_type)
-                gmm.fit(fwd_diff)
-                bic = gmm.bic(fwd_diff)
-                if bic < lowest_bic:
-                    print('  this model had the lowest BIC ({}) so far.'
-                          .format(bic))
-                    lowest_bic = bic
-                    best_n_components = n_components
-                    best_cv_type = cv_type
-
-        self._p_fwd_diff = mixture.GMM(n_components=best_n_components, 
-                                       covariance_type=cv_type)
-        self._p_fwd_diff.fit(fwd_diff)
-
-#        self._p_fwd_diff = mixture.DPGMM(n_components=20, covariance_type='full')
-#        self._p_fwd_diff.fit(fwd_diff)
-
-        if plot:
-            print('Plotting...')
-            return plot_data_and_model(fwd_diff, self._p_fwd_diff)
-
 
     def train(self, aggregate, appliances):
         """
@@ -176,7 +152,7 @@ class BayesDisaggregator(Disaggregator):
           * aggregate (pda.Channel)
           * appliances (list of slicedpy.Appliance objects)
         """
-        
+        pass
 
 
 class KNNDisaggregator(Disaggregator):

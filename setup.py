@@ -30,7 +30,8 @@ else:
 
 if use_cython:
     sources = [join(CYTHON_DIR, '_cython_feature_detectors.pyx')]
-    extensions = [Extension("slicedpy._cython_feature_detectors", sources=sources)]
+    extensions = [Extension("slicedpy._cython_feature_detectors", 
+                            sources=sources)]
     ext_modules = cythonize(extensions)
 else:
     ext_modules = [
@@ -38,14 +39,15 @@ else:
                   [join(CYTHON_DIR, '_cython_feature_detectors.c')]),
     ]
 
-
 setup(
     name='slicedpy',
     version='0.1',
     packages = find_packages(),
     ext_modules = ext_modules,
-    install_requires = ['numpy', 'pandas', 'pda'],
-    description='Estimate the energy consumed by individual appliances from whole-house power meter readings',
+    install_requires = ['numpy', 'pandas', 'pda', 'scikit-learn', 
+                        'matplotlib', 'networkx'],
+    description='Estimate the energy consumed by individual appliances from '
+                'whole-house power meter readings',
     author='Jack Kelly',
     author_email='jack@jack-kelly.com',
     url='https://github.com/JackKelly/slicedpy',
@@ -59,5 +61,6 @@ setup(
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering :: Mathematics',
     ],
-    keywords='smartmeters power electricity energy analytics redd disaggregation nilm nialm'
+    keywords='smartmeters power electricity energy analytics redd '
+             'disaggregation nilm nialm'
 )
