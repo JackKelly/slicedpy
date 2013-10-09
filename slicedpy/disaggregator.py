@@ -60,14 +60,13 @@ class BayesDisaggregator(Disaggregator):
           * aggregate (pda.Channel or np.ndarray)
         """
 
-        # TODO: 
-        # * filter out diffs where gap is > sample period.
+        # TODO:
         # * merge spikes
 
         if isinstance(aggregate, np.ndarray):
             fwd_diff = np.diff(aggregate)
         else:
-            fwd_diff = aggregate.series.diff().dropna().values
+            fwd_diff = aggregate.diff_ignoring_long_outages()
 
         fwd_diff = fwd_diff[np.fabs(fwd_diff) >= MIN_FWD_DIFF]
 
