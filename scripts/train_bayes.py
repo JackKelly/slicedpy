@@ -15,12 +15,6 @@ APP_DATA_DIR = '/data/mine/domesticPowerData/BellendenRd/wattsUp'
 #    start_date='2013/6/4', end_date='2013/6/5',
 #    n_subplots=2, date_format='%H:%M:%S', alpha=0.6) #, plot_appliance_ground_truth=False)
 
-full_active = Channel()
-full_active.load_normalised(DD, high_freq_param='active')
-
-full_active.series.diff().hist()
-raise Exception('finished')
-
 ######### WASHING MACHINE
 wm_app = Appliance('wm')
 
@@ -58,9 +52,15 @@ k1.load_wattsup(path.join(APP_DATA_DIR, 'kettle1.csv'))
 kettle_app.train_on_single_example(k1)
 
 ######### TRAIN
+full_active = Channel()
+full_active.load_normalised(DD, high_freq_param='active')
+
 disag = BayesDisaggregator()
-# disag.train_knn([wm_app, tv_app, toaster_app, kettle_app])
-# disag.train_knn([toaster_app, kettle_app])
+disag.train([wm_app, tv_app, toaster_app, kettle_app], aggregate=full_active)
+# disag.train([toaster_app, kettle_app])
+ax = plt.gca()
+ax.bar(disag._bin_edges[:-1], disag._prob_mass)
+plt.show()
 
 ######### DISAGGREGATE!!!
 

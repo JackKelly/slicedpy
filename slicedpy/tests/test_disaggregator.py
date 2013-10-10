@@ -48,7 +48,7 @@ class TestDisaggregator(unittest.TestCase):
     def test_fit_p_fwd_diff(self):
         sig = fake_signature()
         d = sd.BayesDisaggregator()
-        d._fit_p_fwd_diff(sig, plot=False)
+        d._fit_p_fwd_diff(sig)
         print(d._bin_edges[0], d._bin_edges[1])
         self.assertAlmostEqual(d._prob_mass[-1], 3/6) # bin=96-101
         self.assertAlmostEqual(d._prob_mass[0], 1/6) # bin=-151 to -146

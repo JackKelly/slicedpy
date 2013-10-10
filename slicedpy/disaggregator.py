@@ -53,20 +53,21 @@ class BayesDisaggregator(Disaggregator):
     def __init__(self):
         super(BayesDisaggregator, self).__init__()
 
-    def _fit_p_fwd_diff(self, aggregate, plot=True):
+    def _fit_p_fwd_diff(self, aggregate, merge=True):
         """Estimate the probability density function for P(forward diff).
 
         Args:
           * aggregate (pda.Channel or np.ndarray)
+          * merge (bool): Merge spikes. Optional. Default=True.
         """
-
-        # TODO:
-        # * merge spikes
 
         if isinstance(aggregate, np.ndarray):
             fwd_diff = np.diff(aggregate)
         else:
             fwd_diff = aggregate.diff_ignoring_long_outages()
+
+        if merge:
+            fwd_diff = fd.get_merged_spikes(fwd_diff)
 
         fwd_diff = fwd_diff[np.fabs(fwd_diff) >= MIN_FWD_DIFF]
 
@@ -75,15 +76,9 @@ class BayesDisaggregator(Disaggregator):
                                           density=True)
 
         # Treat the bins as discrete values and come up with a
-        # 'probability mass' for each bin:
+        # 'probability mass' for each bin by integrating across
+        # the bin:
         self._prob_mass = density * BIN_WIDTH
-
-        # Plot
-        if plot:
-            ax = plt.gca()
-            ax.bar(bin_edges[:-1], self._prob_mass)
-            plt.show()
-            return ax
 
     def _p_fwd_diff(self, fwd_diff, print_debug_info=False):
         """The probability of the forward diff, as calculated previously
