@@ -40,9 +40,11 @@ def train_appliance(label, sig_data_filenames):
         print("node", node.power.get_model().mean, "essential=", node.essential)
 
 
-train_appliance('washing machine', ['washingmachine1.csv', 'washingmachine2.csv'])
+# train_appliance('washing machine', ['washingmachine1.csv', 'washingmachine2.csv'])
 # train_appliance('tv', ['tv1.csv'])
 # train_appliance('toaster', ['toaster1.csv'])
 # train_appliance('kettle', ['kettle1.csv'])
+train_appliance('breadmaker', ['breadmaker1.csv'])
+# train_appliance('fridge', ['fridge8May2012.csv'])
 
 plt.show()
