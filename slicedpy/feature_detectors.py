@@ -100,7 +100,8 @@ def spike_histogram(series, merge_spikes=True, window_duration=60, n_bins=8):
     return spike_hist, bin_edges
 
 
-def spike_histogram_bin_to_data_coordinates(bin_data, scale_x=1):
+def spike_histogram_bin_to_data_coordinates(bin_data, scale_x=1, 
+                                            binary_items=False):
     """make a 2d matrix suitable for clustering where each row stores the
     coordinates of a single data point.  Each x coordinate is the
     ordinal timestamp (in ordinal time where 1 == 1st Jan 0001; 2 =
@@ -109,7 +110,8 @@ def spike_histogram_bin_to_data_coordinates(bin_data, scale_x=1):
 
     Args:
       * bin_data (pd.Series): one bin from the spike histogram.
-      * scale_x (float): multiple ordinal time by this value.
+      * scale_x (float): multiply ordinal time by this value.
+      * binary_items (bool): just put a 1 in the second column.
 
     Returns:
       * X (np.ndarray, dim=2, np.float64)
@@ -118,7 +120,7 @@ def spike_histogram_bin_to_data_coordinates(bin_data, scale_x=1):
     nonzero_i = np.nonzero(bin_data)[0]
     X = np.empty((nonzero_i.size, 2), dtype=np.float64)
     X[:,0] = mdates.date2num(bin_data[nonzero_i].index) * scale_x
-    X[:,1] = bin_data[nonzero_i].values
+    X[:,1] = 1 if binary_items else bin_data[nonzero_i].values
     return X
 
 
