@@ -21,9 +21,11 @@ chan.plot(ax=ax, color='grey')
 for window in [2, 5, 10, 50, 100, 300]:
     print(window)
     smoothed = pd.rolling_window(chan.series, window, 'blackmanharris', center=True)
-#    smoothed.plot(ax=ax)
+    smoothed.plot(ax=ax, label=str(window))
 #    pd.rolling_mean(chan.series, window, center=True).plot()
     steady_states = fd.steady_states(smoothed.astype(np.float32).dropna())
-    plot_steady_states(ax, steady_states, color='b', label=str(window))
+#    plot_steady_states(ax, steady_states, color='b', label=str(window))
 
+ax.set_title(SIG_DATA_FILENAME + ' Smoothing with blackmanharris.')
+plt.legend(title='Window')
 plt.show()
