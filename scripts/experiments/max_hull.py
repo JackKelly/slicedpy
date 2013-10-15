@@ -17,7 +17,8 @@ chan.load_wattsup(path.join(DATA_DIR, SIG_DATA_FILENAME))
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
-chan.plot(ax=ax, color='grey')
+chan.plot(ax=ax, color='grey', date_format='%H:%M')
+ax.set_xlabel('hours:minutes')
 
 WINDOW = 40
 rolling_max = pd.rolling_max(chan.series, window=WINDOW, center=True)
