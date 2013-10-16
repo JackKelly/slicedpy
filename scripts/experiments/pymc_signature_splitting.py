@@ -9,7 +9,10 @@ from os import path
 * CDP's reply to a SO question: http://stats.stackexchange.com/a/46628
 * http://en.wikipedia.org/wiki/Conjugate_prior#Continuous_distributions
 
-TODO: tinker with Gammas http://en.wikipedia.org/wiki/Gamma_distribution
+KNOWN ISSUES:
+* Terminates if split is near end, even if there's still lots of work to do
+  (I made an incorrect assumption that a split near the end indicated
+   that this chunk cannot be split any more)
 """
 
 # np.random.normals are specified using a mean and standard deviation (scale)
@@ -24,7 +27,7 @@ SIG_DATA_FILENAME = 'washingmachine1.csv'
 
 chan = Channel()
 chan.load_wattsup(path.join(DATA_DIR, SIG_DATA_FILENAME))
-data = chan.series.values[138:1647]# [:1353][:153]
+data = chan.series.values[142:1647]# [:1353][:153]
 
 switchpoints = set()
 
