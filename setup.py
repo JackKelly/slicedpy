@@ -53,11 +53,11 @@ setup(
     url='https://github.com/JackKelly/slicedpy',
     download_url = "https://github.com/JackKelly/slicedpy/tarball/master#egg=slicedpy-dev",
     long_description=open('README.md').read(),
-    license='MIT',
+    license='Apache 2.0',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache 2.0',
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering :: Mathematics',
     ],
