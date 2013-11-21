@@ -7,8 +7,10 @@ energy bill using just a single, whole-house power meter.
 
 This process is sometimes called:
 
-* "nonintrusive load monitoring (NILM)"
-* "nonintrusive appliance load monitoring (NIALM)"
+* "non-intrusive load monitoring (NILM)"
+* "non-intrusive appliance load monitoring (NALM or NIALM)"
+* "electriciy disaggregation"
+* "energy disaggregation"
 * "smart meter disaggregation"
 
 # Requirements
